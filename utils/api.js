@@ -25,4 +25,74 @@ const fetchFlightSearchResults = async (params) => {
   }
 };
 
-module.exports = { fetchFlightSearchResults };
+const fetchPickupCoordinates = async (pickupLocation) => {
+  try {
+    const response = await axios.get(`https://${process.env.API_HOST}/api/v1/cars/searchDestination`, {
+      headers: {
+        'X-Rapidapi-Key': process.env.API_KEY,
+        'X-Rapidapi-Host': process.env.API_HOST,
+      },
+      params: { query: pickupLocation },
+    });
+
+    if (response.data.status && response.data.data.length > 0) {
+      const coordinates = response.data.data[0].coordinates;
+      return { latitude: coordinates.latitude, longitude: coordinates.longitude };
+    } else {
+      return null;  
+    }
+  } catch (error) {
+    console.error('Error fetching pickup coordinates:', error.message);
+    throw new Error('Failed to fetch pickup coordinates');
+  }
+};
+
+const fetchDropOffCoordinates = async (dropOffLocation) => {
+  try {
+    const response = await axios.get(`https://${process.env.API_HOST}/api/v1/cars/searchDestination`, {
+      headers: {
+        'X-Rapidapi-Key': process.env.API_KEY,
+        'X-Rapidapi-Host': process.env.API_HOST,
+      },
+      params: { query: dropOffLocation },
+    });
+
+    if (response.data.status && response.data.data.length > 0) {
+      const coordinates = response.data.data[0].coordinates;
+      return { latitude: coordinates.latitude, longitude: coordinates.longitude };
+    } else {
+      return null; 
+    }
+  } catch (error) {
+    console.error('Error fetching drop-off coordinates:', error.message);
+    throw new Error('Failed to fetch drop-off coordinates');
+  }
+};
+
+const searchCarRentals = async (params) => {
+  try {
+    const response = await axios.get(`https://${process.env.API_HOST}/api/v1/cars/searchCarRentals`, {
+      headers: {
+        'X-Rapidapi-Key': process.env.API_KEY,
+        'X-Rapidapi-Host': process.env.API_HOST,
+      },
+      params: {
+        pick_up_latitude: params.pickUpCoordinates.latitude,
+        pick_up_longitude: params.pickUpCoordinates.longitude,
+        drop_off_latitude: params.dropOffCoordinates.latitude,
+        drop_off_longitude: params.dropOffCoordinates.longitude,
+        pick_up_date: params.pickUpDate,
+        drop_off_date: params.dropOffDate,
+        pick_up_time: params.pickUpTime,
+        drop_off_time: params.dropOffTime,
+        currency_code: 'CAD'
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching car rentals:', error.message);
+    throw new Error('Failed to fetch car rentals');
+  }
+};
+
+module.exports = { fetchFlightSearchResults, fetchPickupCoordinates, fetchDropOffCoordinates, searchCarRentals };
