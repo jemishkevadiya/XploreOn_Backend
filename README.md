@@ -1,1 +1,1 @@
-XPLORE ONE 
+XploreOn 
