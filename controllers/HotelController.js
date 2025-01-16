@@ -1,6 +1,5 @@
 const { fetchDestinationCode, fetchHotelData } = require('../utils/api');
 
-// Controller for fetching destination code
 const getDestinationCode = async (req, res) => {
     const { location } = req.query;
   
@@ -16,7 +15,6 @@ const getDestinationCode = async (req, res) => {
     }
 };
 
-// Controller for fetching hotel data
 const getHotelData = async (req, res) => {
     const { destinationCode, checkIn, checkOut, person } = req.query;
   
@@ -32,7 +30,6 @@ const getHotelData = async (req, res) => {
     }
 };
 
-// Export controller functions using CommonJS syntax
 module.exports = { 
   getDestinationCode,
   getHotelData 

@@ -1,10 +1,35 @@
 const axios = require('axios');
 
+const fetchAirportSuggestions = async (cityName) => {
+  try {
+    const response = await axios.get(
+      `https://${process.env.API_HOST}/api/v1/flights/searchDestination`,
+      {
+        headers: {
+          'x-rapidapi-key': process.env.API_KEY,
+          'x-rapidapi-host': process.env.API_HOST,
+        },
+        params: { query: cityName },
+      }
+    );
+
+    return response.data.data.map((item) => ({
+      city: item.cityName,
+      airport: item.name,
+      code: item.code,
+      type: item.type,
+    }));
+  } catch (error) {
+    console.error('Error fetching airport suggestions:', error.message);
+    throw new Error('Failed to fetch airport suggestions');
+  }
+};
 
 const fetchFlightSearchResults = async (params) => {
   try {
     const response = await axios.get(
-      `https://${process.env.API_HOST}/api/v1/flights/searchFlights`, {
+      `https://${process.env.API_HOST}/api/v1/flights/searchFlights`,
+      {
         headers: {
           'x-rapidapi-key': process.env.API_KEY,
           'x-rapidapi-host': process.env.API_HOST,
@@ -13,9 +38,10 @@ const fetchFlightSearchResults = async (params) => {
           fromId: params.fromId,
           toId: params.toId,
           departDate: params.departureDate,
+          returnDate: params.returnDate ? params.returnDate : undefined, 
           adults: params.adults,
           cabinClass: params.cabinClass,
-          currency_code: 'CAD',
+          currency_code: 'CAD', 
         },
       }
     );
@@ -25,6 +51,7 @@ const fetchFlightSearchResults = async (params) => {
     throw new Error('Failed to fetch flight search results');
   }
 };
+
 
 const fetchDestinationCode = async (location) => {
   try {
@@ -144,6 +171,7 @@ const searchCarRentals = async (params) => {
 };
 
 module.exports = { 
+  fetchAirportSuggestions,
   fetchFlightSearchResults, 
   fetchDestinationCode, 
   fetchHotelData,
