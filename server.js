@@ -13,7 +13,7 @@ connectDB();
 app.use('/api/user', userRoutes);
 app.use('/api/flights', flightRoutes);
 app.use('/api/car_rental', carRentalRoutes);
-app.use('api/hotels', hotelRoutes)
+app.use('/api/hotels', hotelRoutes)
 
 const PORT = process.env.SERVER_PORT;
 app.listen(PORT, () => {

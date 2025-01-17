@@ -1,39 +1,135 @@
 const { fetchDestinationCode, fetchHotelData } = require('../utils/api');
 
-// Controller for fetching destination code
+const isValidDate = (date) => {
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
+    return dateRegex.test(date) && !isNaN(new Date(date).getTime());
+};
+
+const isFutureDate = (date) => {
+    const today = new Date();
+    const inputDate = new Date(date);
+    today.setHours(0, 0, 0, 0); 
+    return inputDate > today;
+};
+
+const sortData = (data, sortBy, sortOrder) => {
+    if (!sortBy) return data; 
+
+    return data.sort((a, b) => {
+        const order = sortOrder === 'desc' ? -1 : 1;
+        if (a[sortBy] < b[sortBy]) return -1 * order;
+        if (a[sortBy] > b[sortBy]) return 1 * order;
+        return 0; 
+    });
+};
+
+const filterByAmenities = (data, amenities) => {
+    if (!amenities || amenities.length === 0) return data; 
+
+    return data.filter((hotel) => {
+        const hotelAmenities = hotel.amenities || [];
+        return amenities.every((amenity) => hotelAmenities.includes(amenity));
+    });
+};
+
+const normalizeLocation = (location) => {
+    return location.charAt(0).toUpperCase() + location.slice(1).toLowerCase();
+};
+
+const retrieveDestinationCode = async (location) => {
+    try {
+        const normalizedLocation = normalizeLocation(location.trim());
+        console.log(`Fetching destination code for normalized location: ${normalizedLocation}`);
+
+        const response = await fetchDestinationCode(normalizedLocation);
+        console.log('Destination Code API Response:', response);
+
+        if (response && response.data && response.data.length > 0) {
+            const primaryDestination = response.data[0];
+            return {
+                destinationCode: primaryDestination.dest_id,
+                name: primaryDestination.name,
+                region: primaryDestination.region,
+                country: primaryDestination.country,
+            };
+        } else {
+            throw new Error(`No destination code found for location: ${normalizedLocation}`);
+        }
+    } catch (error) {
+        console.error('Error in fetchDestinationCode:', error.message);
+        throw error;
+    }
+};
+
 const getDestinationCode = async (req, res) => {
     const { location } = req.query;
-  
-    if (!location) {
-      return res.status(400).json({ error: 'Location is required' });
+
+    if (!location || typeof location !== 'string' || location.trim() === '') {
+        return res.status(400).json({ error: 'Valid location is required' });
     }
-  
+
     try {
-      const data = await fetchDestinationCode(location);
-      res.status(200).json(data);
+        const trimmedLocation = location.trim();
+        const data = await retrieveDestinationCode(trimmedLocation);
+        res.status(200).json(data);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+        res.status(500).json({ error: error.message });
     }
 };
 
-// Controller for fetching hotel data
 const getHotelData = async (req, res) => {
-    const { destinationCode, checkIn, checkOut, person } = req.query;
-  
-    if (!destinationCode || !checkIn || !checkOut || !person) {
-      return res.status(400).json({ error: 'All parameters (destinationCode, checkIn, checkOut, person) are required' });
+    const { location, checkIn, checkOut, person, sortBy, sortOrder, amenities } = req.query;
+
+    if (!location || typeof location !== 'string' || location.trim() === '') {
+        return res.status(400).json({ error: 'Valid location is required' });
     }
-  
+    if (!checkIn || !isValidDate(checkIn)) {
+        return res.status(400).json({ error: 'Valid checkIn date (YYYY-MM-DD) is required' });
+    }
+    if (!checkOut || !isValidDate(checkOut)) {
+        return res.status(400).json({ error: 'Valid checkOut date (YYYY-MM-DD) is required' });
+    }
+    if (!isFutureDate(checkIn)) {
+        return res.status(400).json({ error: 'checkIn date must be in the future' });
+    }
+    if (new Date(checkOut) <= new Date(checkIn)) {
+        return res.status(400).json({ error: 'checkOut date must be after checkIn date' });
+    }
+    if (!person || isNaN(person) || person <= 0) {
+        return res.status(400).json({ error: 'Valid person count greater than 0 is required' });
+    }
+
     try {
-      const data = await fetchHotelData(destinationCode, checkIn, checkOut, person);
-      res.status(200).json(data);
+        const trimmedLocation = location.trim();
+
+        const destinationData = await retrieveDestinationCode(trimmedLocation);
+        if (!destinationData || !destinationData.destinationCode) {
+            return res.status(404).json({ error: `No destination code found for location: ${trimmedLocation}` });
+        }
+
+        const destinationCode = destinationData.destinationCode;
+
+        let data = await fetchHotelData(
+            destinationCode,
+            checkIn,
+            checkOut,
+            parseInt(person, 10)
+        );
+
+        const amenitiesList = amenities ? amenities.split(',').map((a) => a.trim()) : [];
+
+        data = filterByAmenities(data, amenitiesList);
+
+        data = sortData(data, sortBy, sortOrder);
+
+        res.status(200).json(data);
     } catch (error) {
-      res.status(500).json({ error: error.message });
+        console.error('Error in getHotelData:', error.message);
+        res.status(500).json({ error: error.message });
     }
 };
 
-// Export controller functions using CommonJS syntax
-module.exports = { 
-  getDestinationCode,
-  getHotelData 
+module.exports = {
+    getDestinationCode,
+    getHotelData,
 };
