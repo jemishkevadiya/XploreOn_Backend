@@ -12,26 +12,6 @@ const isFutureDate = (date) => {
     return inputDate > today;
 };
 
-const sortData = (data, sortBy, sortOrder) => {
-    if (!sortBy) return data; 
-
-    return data.sort((a, b) => {
-        const order = sortOrder === 'desc' ? -1 : 1;
-        if (a[sortBy] < b[sortBy]) return -1 * order;
-        if (a[sortBy] > b[sortBy]) return 1 * order;
-        return 0; 
-    });
-};
-
-const filterByAmenities = (data, amenities) => {
-    if (!amenities || amenities.length === 0) return data; 
-
-    return data.filter((hotel) => {
-        const hotelAmenities = hotel.amenities || [];
-        return amenities.every((amenity) => hotelAmenities.includes(amenity));
-    });
-};
-
 const normalizeLocation = (location) => {
     return location.charAt(0).toUpperCase() + location.slice(1).toLowerCase();
 };
@@ -39,10 +19,8 @@ const normalizeLocation = (location) => {
 const retrieveDestinationCode = async (location) => {
     try {
         const normalizedLocation = normalizeLocation(location.trim());
-        console.log(`Fetching destination code for normalized location: ${normalizedLocation}`);
 
         const response = await fetchDestinationCode(normalizedLocation);
-        console.log('Destination Code API Response:', response);
 
         if (response && response.data && response.data.length > 0) {
             const primaryDestination = response.data[0];
@@ -56,7 +34,6 @@ const retrieveDestinationCode = async (location) => {
             throw new Error(`No destination code found for location: ${normalizedLocation}`);
         }
     } catch (error) {
-        console.error('Error in fetchDestinationCode:', error.message);
         throw error;
     }
 };
@@ -116,15 +93,19 @@ const getHotelData = async (req, res) => {
             parseInt(person, 10)
         );
 
+        if (!Array.isArray(data)) {
+            if (data.data && Array.isArray(data.data.hotels)) {
+                data = data.data.hotels;
+            } else {
+                throw new Error('Expected hotel data array not found.');
+            }
+        }
+
         const amenitiesList = amenities ? amenities.split(',').map((a) => a.trim()) : [];
 
-        data = filterByAmenities(data, amenitiesList);
-
-        data = sortData(data, sortBy, sortOrder);
 
         res.status(200).json(data);
     } catch (error) {
-        console.error('Error in getHotelData:', error.message);
         res.status(500).json({ error: error.message });
     }
 };
