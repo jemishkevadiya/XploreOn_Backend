@@ -1,48 +1,53 @@
-require('dotenv').config();
+const admin = require('firebase-admin');
+const fs = require('fs');
+const dotenv = require('dotenv');
+dotenv.config();
+
 const express = require('express');
 const connectDB = require('./config/db');
-const { auth } = require('express-openid-connect');
 const userRoutes = require('./routes/userRoutes');
 const flightRoutes = require('./routes/flightRoutes');
 const carRentalRoutes = require('./routes/carRentalRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
-const authRoutes = require("./routes/authRoutes");
 const app = express();
+
+// Load Firebase credentials
+const credentials = JSON.parse(
+  fs.readFileSync('./credentials.json')
+);
+
+// Initialize Firebase Admin SDK
+admin.initializeApp({
+  credential: admin.credential.cert(credentials)
+});
+
+// Middleware to parse JSON
 app.use(express.json());
 
-
-
-const config = {
-  authRequired: false,
-  auth0Logout: true,
-  secret: process.env.SECRET,
-  baseURL: process.env.BASEURL,
-  clientID: process.env.CLIENTID,
-  issuerBaseURL: process.env.ISSUER, 
-};
-
-
+// Connect to the database
 connectDB();
-app.use(auth(config));
 
-// Place this root route AFTER the auth middleware:
-app.get('/', (req, res) => {
-  // This line checks whether the user is authenticated.
-  res.send(req.oidc.isAuthenticated() ? 'Logged in' : 'Logged out');
-});
+// Routes
 app.use('/api/user', userRoutes);
+
+app.use(async function(req, res, next) {
+  const { authtoken } = req.headers;
+
+  if (authtoken) {
+    const user = await admin.auth().verifyIdToken(authtoken);
+    req.user = user;
+  } else {
+    res.sendStatus(400);
+  }
+
+  next();
+});
 app.use('/api/flights', flightRoutes);
 app.use('/api/car_rental', carRentalRoutes);
-app.use('/api/hotels', hotelRoutes)
-app.use('/', authRoutes);  
+app.use('/api/hotels', hotelRoutes);
 
-
-// Sample endpoint
-app.get("/api/test", (req, res) => {
-  res.json({ message: "Hello from the backend!" });
-});
-
-const PORT = process.env.SERVER_PORT;
+// Start the server
+const PORT = process.env.SERVER_PORT; // Fallback to 3000 if SERVER_PORT is not set
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
