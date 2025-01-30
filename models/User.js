@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const userSchema = new mongoose.Schema({
+    uid: {
+        type: String,
+        required: true,
+        unique: true, // Ensures one user per Firebase UID
+    },
     firstname: {
         type: String,
         required: true,
@@ -21,16 +26,14 @@ const userSchema = new mongoose.Schema({
             'Please use a valid email address',
         ],
     },
-    password: {
-        type: String,
-        required: true,
-        minlength: 6,
-        select: false,
-    },
     role: {
         type: String,
         enum: ['user', 'admin'],
         default: 'user',
+    },
+    photoURL: {
+        type: String, // Firebase profile picture
+        default: "",
     },
     createdAt: {
         type: Date,
@@ -40,10 +43,6 @@ const userSchema = new mongoose.Schema({
         type: Date,
         default: Date.now,
     },
-},
-    {
-        timestamps: true,
-    }
-);
+}, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

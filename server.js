@@ -3,6 +3,7 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const cors = require('cors');
 const express = require('express');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
@@ -21,6 +22,7 @@ admin.initializeApp({
   credential: admin.credential.cert(credentials)
 });
 
+app.use(cors({ origin: "http://localhost:3000" }));
 // Middleware to parse JSON
 app.use(express.json());
 
