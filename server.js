@@ -3,6 +3,7 @@ const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const cors = require('cors');
 const express = require('express');
 const connectDB = require('./config/db');
 const userRoutes = require('./routes/userRoutes');
@@ -11,32 +12,38 @@ const carRentalRoutes = require('./routes/carRentalRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
 const app = express();
 
-const credentials = JSON.parse(
-  fs.readFileSync('./credentials.json')
-);
+// // Load Firebase credentials
+// const credentials = JSON.parse(
+//   fs.readFileSync('./credentials.json')
+// );
 
-admin.initializeApp({
-  credential: admin.credential.cert(credentials)
-});
+// // Initialize Firebase Admin SDK
+// admin.initializeApp({
+//   credential: admin.credential.cert(credentials)
+// });
 
-app.use(express.json());
+// app.use(cors({ origin: "http://localhost:3000" }));
+// // Middleware to parse JSON
+// app.use(express.json());
 
-connectDB();
+// // Connect to the database
+// connectDB();
 
-app.use('/api/user', userRoutes);
+// // Routes
+// app.use('/api/user', userRoutes);
 
-app.use(async function(req, res, next) {
-  const { authtoken } = req.headers;
+// // app.use(async function(req, res, next) {
+// //   const { authtoken } = req.headers;
 
-  if (authtoken) {
-    const user = await admin.auth().verifyIdToken(authtoken);
-    req.user = user;
-  } else {
-    res.sendStatus(400);
-  }
+// //   if (authtoken) {
+// //     const user = await admin.auth().verifyIdToken(authtoken);
+// //     req.user = user;
+// //   } else {
+// //     res.sendStatus(400);
+// //   }
 
-  next();
-});
+// //   next();
+// // });
 app.use('/api/flights', flightRoutes);
 app.use('/api/car_rental', carRentalRoutes);
 app.use('/api/hotels', hotelRoutes);
