@@ -44,6 +44,7 @@ const fetchFlightSearchResults = async (params) => {
           departDate: params.departureDate,
           returnDate: params.returnDate ? params.returnDate : undefined,
           adults: params.adults,
+          children: params.children,
           cabinClass: params.cabinClass,
           currency_code: 'CAD',
           sort: sortParam,

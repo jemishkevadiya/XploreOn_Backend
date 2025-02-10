@@ -50,8 +50,8 @@ const resolveAirportCode = async (city) => {
  * @param {string} tripType - Trip type (One Way or RoundTrip)
  * @returns {Object} Validation result with isValid and message
  */
-const validateFlightSearch = (origin, destination, departureDate, returnDate, passengers, travelClass, tripType, sort) => {
-  if (!origin || !destination || !departureDate || !passengers || !travelClass || !tripType || !sort ) {
+const validateFlightSearch = (origin, destination, departureDate, returnDate, adults, travelClass, tripType, sort) => {
+  if (!origin || !destination || !departureDate || !adults || !travelClass || !tripType || !sort ) {
     return { isValid: false, message: 'Please fill in all required fields.' };
   }
 
@@ -59,25 +59,28 @@ const validateFlightSearch = (origin, destination, departureDate, returnDate, pa
     return { isValid: false, message: 'Origin and destination cannot be the same.' };
   }
 
-  if (passengers < 1) {
+  if (adults < 1) {
     return { isValid: false, message: 'At least one adult passenger is required.' };
   }
 
-  const isFutureDate = (date) => new Date(date).setHours(0, 0, 0, 0) >= new Date().setHours(0, 0, 0, 0);
+  const isFutureDate = (date) => new Date(date).getTime() >= new Date().getTime();
 
   if (!isFutureDate(departureDate)) {
     return { isValid: false, message: 'Departure date must be today or in the future.' };
   }
 
   if (tripType.trim().toLowerCase() === 'roundtrip') {
-    if (!returnDate) {
+    if (!returnDate || isNaN(new Date(returnDate))) {
       return { isValid: false, message: 'Return date is required for a round trip.' };
     }
 
-    const depDate = new Date(departureDate).setHours(0, 0, 0, 0);
-    const retDate = new Date(returnDate).setHours(0, 0, 0, 0);
+    const depDate = new Date(departureDate).getTime();
+    const retDate = new Date(returnDate).getTime();
 
-    if (retDate < new Date().setHours(0, 0, 0, 0)) {
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+
+    if (retDate < today.getTime()) {
       return { isValid: false, message: 'Return date must be today or in the future.' };
     }
 
@@ -95,10 +98,10 @@ const validateFlightSearch = (origin, destination, departureDate, returnDate, pa
  * @param {Object} res - Express response object
  */
 exports.getFlightSearchResults = async (req, res) => {
-  let { origin, destination, departureDate, returnDate, passengers, travelClass, tripType, sort } = req.query;
+  let { origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort } = req.query;
 
   try {
-    const validationResult = validateFlightSearch(origin, destination, departureDate, returnDate, passengers, travelClass, tripType, sort);
+    const validationResult = validateFlightSearch(origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort);
     if (!validationResult.isValid) {
       return res.status(400).json({ message: validationResult.message });
     }
@@ -122,7 +125,8 @@ exports.getFlightSearchResults = async (req, res) => {
       toId: destination,
       departureDate,
       returnDate: tripType.trim().toLowerCase() === 'roundtrip' ? returnDate : undefined,
-      adults: Number(passengers),
+      adults: Number(adults),
+      children: children,
       cabinClass: travelClass.trim().toLowerCase(),
       sort
     });
