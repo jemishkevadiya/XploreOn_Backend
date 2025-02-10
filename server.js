@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+// const admin = require('firebase-admin');
 const fs = require('fs');
 const dotenv = require('dotenv');
 dotenv.config();
@@ -22,15 +22,15 @@ const app = express();
 //   credential: admin.credential.cert(credentials)
 // });
 
-// app.use(cors({ origin: "http://localhost:3000" }));
-// // Middleware to parse JSON
-// app.use(express.json());
+app.use(cors({ origin: "http://localhost:3000" }));
+// Middleware to parse JSON
+app.use(express.json());
 
-// // Connect to the database
-// connectDB();
+// Connect to the database
+connectDB();
 
 // // Routes
-// app.use('/api/user', userRoutes);
+// app.use('/user', userRoutes);
 
 // // app.use(async function(req, res, next) {
 // //   const { authtoken } = req.headers;
@@ -44,11 +44,10 @@ const app = express();
 
 // //   next();
 // // });
-app.use('/api/flights', flightRoutes);
-app.use('/api/car_rental', carRentalRoutes);
-app.use('/api/hotels', hotelRoutes);
+app.use('/flights', flightRoutes);
+app.use('/car_rental', carRentalRoutes);
+app.use('/hotels', hotelRoutes);
 
-// Start the server
 const PORT = process.env.SERVER_PORT; 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);

@@ -1,5 +1,6 @@
 const { fetchFlightSearchResults, fetchAirportSuggestions } = require('../utils/api');
-
+const User = require('../models/User')
+const Booking = require(`../models/Booking`);
 /**
  * Resolves the airport code for a given city
  * @param {string} city - City name to fetch airport suggestions
@@ -37,6 +38,7 @@ const resolveAirportCode = async (city) => {
   }
 };
 
+
 /**
  * Validates flight search parameters
  * @param {string} origin - Origin airport code or city name
@@ -48,8 +50,8 @@ const resolveAirportCode = async (city) => {
  * @param {string} tripType - Trip type (One Way or RoundTrip)
  * @returns {Object} Validation result with isValid and message
  */
-const validateFlightSearch = (origin, destination, departureDate, returnDate, passengers, travelClass, tripType) => {
-  if (!origin || !destination || !departureDate || !passengers || !travelClass || !tripType) {
+const validateFlightSearch = (origin, destination, departureDate, returnDate, passengers, travelClass, tripType, sort) => {
+  if (!origin || !destination || !departureDate || !passengers || !travelClass || !tripType || !sort ) {
     return { isValid: false, message: 'Please fill in all required fields.' };
   }
 
@@ -93,10 +95,10 @@ const validateFlightSearch = (origin, destination, departureDate, returnDate, pa
  * @param {Object} res - Express response object
  */
 exports.getFlightSearchResults = async (req, res) => {
-  let { origin, destination, departureDate, returnDate, passengers, travelClass, tripType } = req.query;
+  let { origin, destination, departureDate, returnDate, passengers, travelClass, tripType, sort } = req.query;
 
   try {
-    const validationResult = validateFlightSearch(origin, destination, departureDate, returnDate, passengers, travelClass, tripType);
+    const validationResult = validateFlightSearch(origin, destination, departureDate, returnDate, passengers, travelClass, tripType, sort);
     if (!validationResult.isValid) {
       return res.status(400).json({ message: validationResult.message });
     }
@@ -122,6 +124,7 @@ exports.getFlightSearchResults = async (req, res) => {
       returnDate: tripType.trim().toLowerCase() === 'roundtrip' ? returnDate : undefined,
       adults: Number(passengers),
       cabinClass: travelClass.trim().toLowerCase(),
+      sort
     });
 
     if (flightData.error) {
@@ -167,4 +170,5 @@ exports.getAirportSuggestions = async (req, res) => {
       error: error.message,
     });
   }
+  
 };
