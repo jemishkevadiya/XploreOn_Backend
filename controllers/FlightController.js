@@ -50,8 +50,8 @@ const resolveAirportCode = async (city) => {
  * @param {string} tripType - Trip type (One Way or RoundTrip)
  * @returns {Object} Validation result with isValid and message
  */
-const validateFlightSearch = (origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort) => {
-  if (!origin || !destination || !departureDate || !adults || !travelClass || !tripType || !sort ) {
+const validateFlightSearch = (origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort, pageNo) => {
+  if (!origin || !destination || !departureDate || !adults || !travelClass || !tripType || !sort || !pageNo ) {
     return { isValid: false, message: 'Please fill in all required fields.' };
   }
 
@@ -103,10 +103,10 @@ const validateFlightSearch = (origin, destination, departureDate, returnDate, ad
  * @param {Object} res - Express response object
  */
 exports.getFlightSearchResults = async (req, res) => {
-  let { origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort } = req.query;
+  let { origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort, pageNo } = req.query;
 
   try {
-    const validationResult = validateFlightSearch(origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort);
+    const validationResult = validateFlightSearch(origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort, pageNo);
     if (!validationResult.isValid) {
       return res.status(400).json({ message: validationResult.message });
     }
@@ -133,7 +133,8 @@ exports.getFlightSearchResults = async (req, res) => {
       adults: Number(adults),
       children: children && children.length > 0 ? children : " ",
       cabinClass: travelClass.trim().toLowerCase(),
-      sort
+      sort,
+      pageNo: pageNo
     });
 
     if (flightData.error) {

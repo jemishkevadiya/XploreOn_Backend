@@ -48,6 +48,7 @@ const fetchFlightSearchResults = async (params) => {
           cabinClass: params.cabinClass,
           currency_code: 'CAD',
           sort: sortParam,
+          pageNo: params.pageNo,
         },
       }
     );
