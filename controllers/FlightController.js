@@ -50,7 +50,7 @@ const resolveAirportCode = async (city) => {
  * @param {string} tripType - Trip type (One Way or RoundTrip)
  * @returns {Object} Validation result with isValid and message
  */
-const validateFlightSearch = (origin, destination, departureDate, returnDate, adults, travelClass, tripType, sort) => {
+const validateFlightSearch = (origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort) => {
   if (!origin || !destination || !departureDate || !adults || !travelClass || !tripType || !sort ) {
     return { isValid: false, message: 'Please fill in all required fields.' };
   }
@@ -62,6 +62,11 @@ const validateFlightSearch = (origin, destination, departureDate, returnDate, ad
   if (adults < 1) {
     return { isValid: false, message: 'At least one adult passenger is required.' };
   }
+
+  if (children && !/^\d*(,\d+)*$/.test(children)) {
+    return { isValid: false, message: 'Invalid children age format. Must be comma-separated numbers.' };
+  }
+
 
   const isFutureDate = (date) => new Date(date).getTime() >= new Date().getTime();
 
@@ -126,7 +131,7 @@ exports.getFlightSearchResults = async (req, res) => {
       departureDate,
       returnDate: tripType.trim().toLowerCase() === 'roundtrip' ? returnDate : undefined,
       adults: Number(adults),
-      children: children,
+      children: children && children.length > 0 ? children : " ",
       cabinClass: travelClass.trim().toLowerCase(),
       sort
     });
