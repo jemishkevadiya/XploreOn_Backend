@@ -1,5 +1,6 @@
 const { fetchFlightSearchResults, fetchAirportSuggestions } = require('../utils/api');
-
+const User = require('../models/User')
+const Booking = require(`../models/Booking`);
 /**
  * Resolves the airport code for a given city
  * @param {string} city - City name to fetch airport suggestions
@@ -36,6 +37,7 @@ const resolveAirportCode = async (city) => {
     return null;
   }
 };
+
 
 /**
  * Validates flight search parameters
@@ -166,5 +168,46 @@ exports.getAirportSuggestions = async (req, res) => {
       message: 'Failed to fetch airport suggestions.',
       error: error.message,
     });
+  }
+  
+};
+
+exports.createFlightBooking = async (req, res) => {
+  try {
+      const { userId, flightDetails, totalAmount } = req.body;  // userId will be the Firebase `uid`
+
+      // Check if the user exists using Firebase UID
+      const user = await User.findOne({ uid: userId });  // Find user by Firebase `uid`
+      if (!user) {
+          return res.status(404).json({ message: 'User not found' });
+      }
+
+      // Prepare the booking details
+      const bookingDetails = {
+          roundTrip: flightDetails.roundTrip,
+          departureCity: flightDetails.departureCity,
+          destinationCity: flightDetails.destinationCity,
+          departureDate: flightDetails.departureDate,
+          returnDate: flightDetails.returnDate,
+          passengers: flightDetails.passengers,
+          price: flightDetails.price
+      };
+
+      // Create a new booking record using `userId` (Firebase UID as a string)
+      const newBooking = new Booking({
+          userId: userId,  // Firebase UID as userId
+          serviceType: 'flight',  // Indicating it's a flight booking
+          bookingDetails: bookingDetails,
+          totalAmount: totalAmount,
+          paymentStatus: 'pending'  // Default to pending until payment is processed
+      });
+
+      // Save the booking to the database
+      await newBooking.save();
+
+      res.status(201).json({ message: 'Flight booking created successfully', booking: newBooking });
+  } catch (error) {
+      console.error('Error creating flight booking:', error);
+      res.status(500).json({ message: 'Error creating flight booking', error: error.message });
   }
 };

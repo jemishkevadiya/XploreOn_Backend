@@ -228,7 +228,7 @@ const fetchHotelFilters = async (destinationCode, searchType, arrivalDate, depar
   }
 };
 
-const fetchSortOptions = async (destinationCode, searchType, checkIn, checkOut, adults, roomQty = 1) => {
+const fetchSortOptions = async (destinationCode, searchType, checkIn, checkOut, adults = 1, roomQty = 1) => {
   try {
     const response = await axios.get(
       `https://${process.env.API_HOST}/api/v1/hotels/getSortBy`,
@@ -256,7 +256,6 @@ const fetchSortOptions = async (destinationCode, searchType, checkIn, checkOut, 
 
 
 
-
 const fetchPickupCoordinates = async (pickupLocation) => {
   try {
     const response = await axios.get(`https://${process.env.API_HOST}/api/v1/cars/searchDestination`, {
@@ -266,17 +265,20 @@ const fetchPickupCoordinates = async (pickupLocation) => {
       },
       params: { query: pickupLocation },
     });
-    if (response.data.status && response.data.data.length > 0) {
+
+    // Check if data exists and has coordinates
+    if (response.data && response.data.data && response.data.data.length > 0) {
       const coordinates = response.data.data[0].coordinates;
       return { latitude: coordinates.latitude, longitude: coordinates.longitude };
     } else {
-      return null;  
+      return null;  // Return null if no data found
     }
   } catch (error) {
     console.error('Error fetching pickup coordinates:', error.message);
     throw new Error('Failed to fetch pickup coordinates');
   }
 };
+
 const fetchDropOffCoordinates = async (dropOffLocation) => {
   try {
     const response = await axios.get(`https://${process.env.API_HOST}/api/v1/cars/searchDestination`, {
@@ -286,17 +288,24 @@ const fetchDropOffCoordinates = async (dropOffLocation) => {
       },
       params: { query: dropOffLocation },
     });
-    if (response.data.status && response.data.data.length > 0) {
+
+    // Check if data exists and has coordinates
+    if (response.data && response.data.data && response.data.data.length > 0) {
       const coordinates = response.data.data[0].coordinates;
       return { latitude: coordinates.latitude, longitude: coordinates.longitude };
     } else {
-      return null; 
+      return null;  // Return null if no data found
     }
   } catch (error) {
     console.error('Error fetching drop-off coordinates:', error.message);
     throw new Error('Failed to fetch drop-off coordinates');
   }
 };
+
+
+
+
+
 const searchCarRentals = async (params) => {
   try {
     const response = await axios.get(`https://${process.env.API_HOST}/api/v1/cars/searchCarRentals`, {
@@ -313,7 +322,7 @@ const searchCarRentals = async (params) => {
         drop_off_date: params.dropOffDate,
         pick_up_time: params.pickUpTime,
         drop_off_time: params.dropOffTime,
-        currency_code: 'CAD'
+        currency_code: params.currencyCode || 'CAD',  // Ensure fallback to 'CAD' if not provided
       },
     });
     return response.data;
@@ -322,6 +331,7 @@ const searchCarRentals = async (params) => {
     throw new Error('Failed to fetch car rentals');
   }
 };
+
 
 module.exports = { 
   fetchAirportSuggestions,
