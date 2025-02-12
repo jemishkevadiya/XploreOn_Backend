@@ -6,51 +6,51 @@ const router = express.Router();
 
 exports.createUser = async (req, res) => {
     try {
-        console.log("🔥 Received request data:", req.body); // Debugging log
+        console.log(" Received request data:", req.body); 
 
         const { uid, firstname, lastname, email, photoURL } = req.body;
 
         if (!uid || !firstname || !lastname || !email) {
-            console.log("❌ Missing required fields:", req.body);
+            console.log(" Missing required fields:", req.body);
             return res.status(400).json({ message: "Missing required fields" });
         }
 
         // Check if user already exists
         let existingUser = await User.findOne({ uid });
         if (existingUser) {
-            console.log("ℹ️ User already exists:", existingUser);
+            console.log("User already exists:", existingUser);
             return res.status(200).json({ message: "User already exists", user: existingUser });
         }
 
-        // ✅ Automatically assign "user" role (MongoDB default)
+        //  Automatically assign "user" role (MongoDB default)
         const newUser = new User({ uid, firstname, lastname, email, photoURL });
         await newUser.save();
 
-        console.log("✅ User stored successfully:", newUser);
+        console.log(" User stored successfully:", newUser);
         res.status(201).json({ message: "User created successfully", user: newUser });
 
     } catch (error) {
-        console.error("❌ Error creating user:", error); // Log detailed error
+        console.error(" Error creating user:", error); // Log detailed error
         res.status(500).json({ message: "Error creating user", error: error.message });
     }
 };
 
 exports.getUserProfile = async (req, res) => {
     try {
-        console.log("🔥 Fetching user with UID:", req.params.uid); // Debugging log
+        console.log("Fetching user with UID:", req.params.uid); // Debugging log
 
-        // ✅ Ensure you are searching by `uid`
+        //  Ensure you are searching by `uid`
         const user = await User.findOne({ uid: req.params.uid });
 
         if (!user) {
-            console.log("❌ User not found for UID:", req.params.uid);
+            console.log("User not found for UID:", req.params.uid);
             return res.status(404).json({ message: "User not found" });
         }
 
-        console.log("✅ User found:", user);
+        console.log(" User found:", user);
         res.json(user);
     } catch (error) {
-        console.error("❌ Error fetching user profile:", error);
+        console.error(" Error fetching user profile:", error);
         res.status(500).json({ message: "Error fetching user profile", error: error.message });
     }
 };
@@ -97,17 +97,30 @@ exports.updateUser = async (req, res) => {
     }
 };
 
-
 exports.getUserBookings = async (req, res) => {
     try {
-        const { email } = req.params;
-        const bookings = await Booking.find({ userEmail: email });
-        res.json({ bookings });
+        const { userId } = req.params;  // Get userId (Firebase UID) from the request params
+
+        // Check if the user exists using Firebase UID
+        const user = await User.findOne({ uid: userId });
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        // Fetch all bookings for this user
+        const bookings = await Booking.find({ userId: userId });  // Query bookings by `userId`
+
+        if (bookings.length === 0) {
+            return res.status(404).json({ message: 'No bookings found for this user' });
+        }
+
+        // Return the bookings
+        res.status(200).json({ bookings });
     } catch (error) {
-        res.status(500).json({ message: 'Error fetching bookings', error });
+        console.error('Error fetching user bookings:', error);
+        res.status(500).json({ message: 'Error fetching user bookings', error: error.message });
     }
 };
-
 
 exports.getUserNotifications = async (req, res) => {
     try {

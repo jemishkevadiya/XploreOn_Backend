@@ -1,6 +1,7 @@
 const admin = require('firebase-admin');
 const fs = require('fs');
 const dotenv = require('dotenv');
+
 dotenv.config();
 
 const cors = require('cors');
@@ -43,8 +44,8 @@ app.use((req, res, next) => {
 
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Connect to the database
-connectDB();
+// // Connect to the database
+// connectDB();
 
 // API Routes
 app.use('/api/flights', flightRoutes);
