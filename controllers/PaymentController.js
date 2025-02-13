@@ -1,187 +1,170 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Booking = require("../models/Booking"); // Adjust path if needed
+const User = require("../models/User"); // Adjust path if needed
 const Payment = require('../models/PaymentModel');
 const { sendConfirmationEmail } = require('./EmailController');
+const mongoose = require('mongoose');
 
-const createCheckoutSession = async (req, res) => {
+const processedPayments = new Set(); 
+
+const getPaymentDetails = async (req, res) => {
   try {
-    const { items, service, email } = req.body;
+    const payment = await Payment.findOne({ paymentIntentId: req.params.paymentIntentId });
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      return res.status(400).json({ error: 'Valid items are required.' });
+    if (!payment) {
+      return res.status(404).json({ error: "Payment not found." });
     }
 
-    if (!service || !email) {
-      return res.status(400).json({ error: 'Service type and email are required.' });
-    }
+    res.json(payment);
+  } catch (error) {
+    console.error("Error fetching payment:", error);
+    res.status(500).json({ error: "Internal server error." });
+  }
+};
 
-    const totalAmount = items.reduce((total, item) => {
-      const itemAmount = Number(item.price_data?.unit_amount); // Extract from price_data
-      const itemQuantity = Number(item.quantity);
+const createCheckoutSession = async (bookingId, totalAmount) => {
+  try {
+    const expirationTime = Math.floor(Date.now() / 1000) + (30 * 60);
 
-      if (isNaN(itemAmount) || isNaN(itemQuantity) || itemAmount < 0 || itemQuantity < 1) {
-        throw new Error(`Invalid item data: ${JSON.stringify(item)}`);
-      }
-
-      return total + itemAmount * itemQuantity;
-    }, 0);
-
-    if (isNaN(totalAmount) || totalAmount <= 0) {
-      return res.status(400).json({ error: 'Total amount must be a positive integer.' });
-    }
-
-    const amountInCents = Math.round(totalAmount);
-
-    // Payment Intent
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: amountInCents,
-      currency: 'cad',
-      payment_method_types: ['card'],
-      metadata: { service, email },
-    });
-
-    // Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
-      line_items: items, // Use as received
+      line_items: [
+        {
+          price_data: {
+            currency: 'cad',
+            product_data: { name: "xyz" },
+            unit_amount: totalAmount * 100
+          },
+          quantity: 1,
+        },
+      ],
       mode: 'payment',
       success_url: `http://localhost:3000/success`,
       cancel_url: 'http://localhost:3000/cancel',
-      metadata: { service, email },
+      metadata: { bookingId },
+      expires_at : expirationTime
     });
-
-    res.json({ checkoutUrl: session.url });
+    const payment = new Payment({
+      paymentIntentId: null,
+      amount: totalAmount,
+      status: "pending",
+      bookingId: bookingId,
+      chargeId: session.id,
+    })
+    await payment.save();
+    return session.url
   } catch (error) {
-    console.error('❌ Error creating checkout session:', error);
-    res.status(500).json({ error: error.message });
+    console.error(' Error creating checkout session:', error);
+    throw new Error(error.message);
   }
 };
-// Webhook
+
+// Handle Stripe Webhook
 const handlePaymentWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
-  console.log("Stripe-Signature: ", sig);
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
   let event;
 
   try {
     event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-    console.log('✅ Webhook verified:', event.type);
+    console.log(' Webhook verified:', event.type);
   } catch (err) {
-    console.error(`❌ Webhook signature verification failed: ${err.message}`);
+    console.error(` Webhook signature verification failed: ${err.message}`);
     return res.status(400).send(`Webhook Error: ${err.message}`);
   }
 
-  const eventData = event.data.object;
-
   switch (event.type) {
-    case 'checkout.session.completed':
-      console.log('✅ Checkout Session Completed:', eventData);
-
-      const { service, email } = eventData.metadata;
-
+    case 'checkout.session.completed': {
       try {
-        const newPayment = new Payment({
-          paymentIntentId: eventData.payment_intent,
-          amount: eventData.amount_total,
-          currency: eventData.currency,
-          service: service || 'unknown',
-          status: eventData.payment_status,
-          email: email || 'N/A',
-        });
+        const session = event.data.object;
+        const paymentIntentId = session.payment_intent || null;
+        const bookingId = session.metadata.bookingId;
+        console.log({ paymentIntentId, bookingId })
+        // ** From the booking id get userId, booking details from userId get user email and send verification email to that user
+        // ** Change the status to completed to that charge_id find the payment using booking id
 
-        await newPayment.save();
-        console.log('✅ New payment record saved:', newPayment);
+        // STEP 1: Find the booking (Get userId)
+        const booking = await Booking.findById(bookingId);
 
-        // Send confirmation email
-        sendConfirmationEmail(email, {
-          paymentIntentId: eventData.payment_intent,
-          amount: eventData.amount_total, // Convert to dollars
-          service: service,
-        });
+        if (!booking) {
+          console.error(" Booking not found for ID:", bookingId);
+          break;
+        }
 
-      } catch (error) {
-        console.error('❌ Error handling payment webhook:', error);
-      }
-      break;
+        const userId = booking.userId; // Since it's a string, no need for ._id
+        console.log(` Found User ID: ${userId}`);
 
-    case 'payment_intent.succeeded':
-      console.log('✅ Payment successful:', eventData);
-      try {
-        const updatedPayment = await Payment.findOneAndUpdate(
-          { paymentIntentId: eventData.id },
-          { status: 'succeeded' },
-          { new: true }
-        );
+        // STEP 2: Find the user details using userId
+        // get the email direcly
+        const user = await User.findOne({uid: userId});
 
-        console.log('✅ Payment record updated:', updatedPayment);
-      } catch (error) {
-        console.error('❌ Error updating payment record:', error);
-      }
-      break;
+        if (!user) {
+          console.error("User not found for ID:", userId);
+          break;
+        }
 
-    case 'payment_intent.payment_failed':
-      console.log('❌ Payment failed:', eventData);
-      try {
+        const email = user.email; // Get user email
+        console.log(` User Email: ${email}`);
+
+        // STEP 3: Update payment status
         await Payment.findOneAndUpdate(
-          { paymentIntentId: eventData.id },
-          { status: 'failed' },
-          { new: true }
-        );
-        console.log('✅ Payment record updated with failed status.');
-      } catch (error) {
-        console.error('❌ Error updating failed payment record:', error);
-      }
-      break;
-
-    case 'payment_intent.created':
-      console.log('✅ Payment Intent Created:', eventData);
-      try {
-        console.log(`PaymentIntent created with ID: ${eventData.id}`);
-      } catch (error) {
-        console.error('❌ Error handling payment intent creation:', error);
-      }
-      break;
-
-    case 'charge.succeeded':
-      console.log('✅ Charge succeeded:', eventData);
-      try {
-        const charge = eventData;
-        const paymentIntentId = charge.payment_intent;
-
-        const updatedPayment = await Payment.findOneAndUpdate(
-          { paymentIntentId: paymentIntentId },
-          { status: 'succeeded', chargeId: charge.id },
+          { bookingId },
+          { status: "completed", paymentIntentId: paymentIntentId },
           { new: true }
         );
 
-        console.log('✅ Payment record updated with charge details:', updatedPayment);
-      } catch (error) {
-        console.error('❌ Error handling charge succeeded:', error);
-      }
-      break;
+        // STEP 4: Send confirmation email
+        sendConfirmationEmail(email, {
+          paymentIntentId,
+          amount: session.amount_total / 100,
+          service: booking.serviceType,
+        });
 
-    case 'charge.updated':
-      console.log('✅ Charge updated:', eventData);
+        console.log(` Email sent to ${email}`);
+        // break;
+      } catch (e) {
+        console.log(e);
+      }
+    }
+    case 'checkout.session.expired':
+    case 'checkout.session.async_payment_failed': {
       try {
-        const charge = eventData;
-        const paymentIntentId = charge.payment_intent;
+        const session = event.data.object;
+        const bookingId = session.metadata.bookingId;
 
-        const updatedPayment = await Payment.findOneAndUpdate(
-          { paymentIntentId: paymentIntentId },
-          { chargeStatus: charge.status }, 
-          { new: true }
-        );
-
-        console.log('✅ Payment record updated with charge status:', updatedPayment);
-      } catch (error) {
-        console.error('❌ Error handling charge update:', error);
+        // ** If for any reason payment is not successed delete the booking
+        await Booking.deleteById(bookingId);
+        await Payment.updateOneAndUpdate(
+          {bookingId},
+          {status: "failed"},
+          {new : true}
+        )
+        break;
+      } catch (e) {
+        console.log(e);
       }
-      break;
+    }
+    case 'charge.dispute.created': {
+      try {
+        console.log("Disputed")
+        const session = event.data.object;
+        const paymentIntentId = session.payment_intent || null;
+        const payment = await Payment.updateOneAndUpdate(
+          {paymentIntentId},
+          {status: "disputed"},
+          {new : true}
+        )
+        await Booking.deleteById(payment.bookingId);
+        // ** if the user disputes the charge then delete the booking
 
+        break;
+      } catch (e) {
+      }
+    }
     default:
-      console.log(`🔸 Unhandled event type: ${event.type}`);
+      console.log(`Unhandled event type: ${event.type}`);
   }
 
-  res.json({ received: true });
 };
 
-module.exports = { createCheckoutSession, handlePaymentWebhook };
+module.exports = { createCheckoutSession, handlePaymentWebhook, getPaymentDetails };

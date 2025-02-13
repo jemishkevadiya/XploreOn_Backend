@@ -1,6 +1,7 @@
 const { fetchFlightSearchResults, fetchAirportSuggestions } = require('../utils/api');
 const User = require('../models/User')
 const Booking = require(`../models/Booking`);
+const {createCheckoutSession} = require('./PaymentController');
 /**
  * Resolves the airport code for a given city
  * @param {string} city - City name to fetch airport suggestions
@@ -174,8 +175,9 @@ exports.getAirportSuggestions = async (req, res) => {
 
 exports.createFlightBooking = async (req, res) => {
   try {
-      const { userId, flightDetails, totalAmount } = req.body;  // userId will be the Firebase `uid`
-
+      // ** get the user id of the user from req.user.uid
+      // ** const userId = req.user.uid;
+      const { flightDetails, totalAmount, userId } = req.body;  // userId will be the Firebase `uid`
       // Check if the user exists using Firebase UID
       const user = await User.findOne({ uid: userId });  // Find user by Firebase `uid`
       if (!user) {
@@ -202,10 +204,16 @@ exports.createFlightBooking = async (req, res) => {
           paymentStatus: 'pending'  // Default to pending until payment is processed
       });
 
-      // Save the booking to the database
-      await newBooking.save();
 
-      res.status(201).json({ message: 'Flight booking created successfully', booking: newBooking });
+      // ** Save the booking into a variable -> Get the id, then call create payment session from payment controller
+      // ** you have the booking id -> you have the amount 
+      // ** you have the booking details
+      // ** get the url from the checkout session and return that url
+      // Save the booking to the database
+      const booking = await newBooking.save();
+      const paymentUrl = await createCheckoutSession(booking._id.toString(), totalAmount);
+      console.log(paymentUrl);
+      res.status(201).json({ message: 'Flight booking created successfully', paymentUrl: paymentUrl });
   } catch (error) {
       console.error('Error creating flight booking:', error);
       res.status(500).json({ message: 'Error creating flight booking', error: error.message });

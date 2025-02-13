@@ -19,56 +19,51 @@ const { handlePaymentWebhook } = require('./controllers/PaymentController');
 
 const app = express();
 
-// Stripe Webhook needs raw body parsing
-app.post('/api/payment/webhook', express.raw({ type: 'application/json' }), handlePaymentWebhook);
+app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePaymentWebhook);
 
-// Uncomment below if Firebase is required
-// const credentials = JSON.parse(
-//   fs.readFileSync('./credentials.json')
-// );
+const credentials = JSON.parse(
+  fs.readFileSync('./credentials.json')
+);
 
-// admin.initializeApp({
-//   credential: admin.credential.cert(credentials)
-// });
+admin.initializeApp({
+  credential: admin.credential.cert(credentials)
+});
 
 app.use(cors({ origin: "http://localhost:3000" }));
 
-// Middleware for parsing JSON (excluding webhooks)
-app.use((req, res, next) => {
-  if (req.originalUrl === '/api/payment/webhook') {
-    next();
-  } else {
-    express.json()(req, res, next);
-  }
-});
+// // Middleware for parsing JSON (excluding webhooks)
+// app.use((req, res, next) => {
+//   if (req.originalUrl === '/payment/webhook') {
+//     next();
+//   } else {
+//     express.json()(req, res, next);
+//   }
+// });
 
+// app.use(async function(req, res, next) {
+//   const { authtoken } = req.headers;
+
+//   if (authtoken) {
+//     // console.log("Auth TOken", authtoken)
+//     const user = await admin.auth().verifyIdToken(authtoken);
+//     req.user = user;
+//   } else {
+//     res.sendStatus(400);
+//   }
+
+//   next();
+// });
+app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // // Connect to the database
-// connectDB();
-
+connectDB();
+app.use('/user',userRoutes);
 // API Routes
-app.use('/api/flights', flightRoutes);
-app.use('/api/car_rental', carRentalRoutes);
-app.use('/api/hotels', hotelRoutes);
-app.use('/api/payment', paymentRoutes);
-
-// Payment Status API Route
-const Payment = require('./models/PaymentModel');
-app.get('/api/payment/:paymentIntentId', async (req, res) => {
-  try {
-    const payment = await Payment.findOne({ paymentIntentId: req.params.paymentIntentId });
-
-    if (!payment) {
-      return res.status(404).json({ error: "Payment not found." });
-    }
-
-    res.json(payment);
-  } catch (error) {
-    console.error("Error fetching payment:", error);
-    res.status(500).json({ error: "Internal server error." });
-  }
-});
+app.use('/flights', flightRoutes);
+app.use('/car_rental', carRentalRoutes);
+app.use('/hotels', hotelRoutes);
+app.use('/payment', paymentRoutes);
 
 // Start the server
 const PORT = process.env.SERVER_PORT;
