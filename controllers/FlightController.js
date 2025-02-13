@@ -197,13 +197,11 @@ exports.createFlightBooking = async (req, res) => {
 
       // Prepare the booking details
       const bookingDetails = {
-          roundTrip: flightDetails.roundTrip,
           departureCity: flightDetails.departureCity,
           destinationCity: flightDetails.destinationCity,
           departureDate: flightDetails.departureDate,
           returnDate: flightDetails.returnDate,
           passengers: flightDetails.passengers,
-          price: flightDetails.price
       };
 
       // Create a new booking record using `userId` (Firebase UID as a string)
