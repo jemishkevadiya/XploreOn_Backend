@@ -2,8 +2,7 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
     userId: { 
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
+        type: String,  // Store Firebase UID as a string
         required: true
     },
     serviceType: {
@@ -22,11 +21,13 @@ const bookingSchema = new mongoose.Schema({
     paymentStatus: {
         type: String,
         enum: ['pending', 'paid'],
-        default: 'paid'
+        default: 'pending'
     },
     itineraryPDFUrl: {
         type: String
     }
-},{
+}, {
     timestamps: true
-})
+});
+
+module.exports = mongoose.model('Booking', bookingSchema);
