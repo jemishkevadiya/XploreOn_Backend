@@ -10,6 +10,7 @@ const userRoutes = require('./routes/userRoutes');
 const flightRoutes = require('./routes/flightRoutes');
 const carRentalRoutes = require('./routes/carRentalRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
+const airportRoutes = require("./routes/airportRoutes")
 const app = express();
 
 // // Load Firebase credentials
@@ -26,24 +27,25 @@ app.use(cors({ origin: "http://localhost:3000" }));
 // Middleware to parse JSON
 app.use(express.json());
 
+app.use("/airports", airportRoutes);
 // Connect to the database
 connectDB();
 
 // // Routes
 // app.use('/user', userRoutes);
 
-// // app.use(async function(req, res, next) {
-// //   const { authtoken } = req.headers;
+// app.use(async function(req, res, next) {
+//   const { authtoken } = req.headers;
 
-// //   if (authtoken) {
-// //     const user = await admin.auth().verifyIdToken(authtoken);
-// //     req.user = user;
-// //   } else {
-// //     res.sendStatus(400);
-// //   }
+//   if (authtoken) {
+//     const user = await admin.auth().verifyIdToken(authtoken);
+//     req.user = user;
+//   } else {
+//     res.sendStatus(400);
+//   }
 
-// //   next();
-// // });
+//   next();
+// });
 app.use('/flights', flightRoutes);
 app.use('/car_rental', carRentalRoutes);
 app.use('/hotels', hotelRoutes);
