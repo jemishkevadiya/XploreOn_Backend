@@ -123,19 +123,22 @@ const getRoomAvailability = async (req, res) => {
     const { hotelId, checkIn, checkOut } = req.query;
 
     if (!hotelId) {
-        return res.status(400).json({ error: 'Hotel ID is required' });
+        return res.status(400).json({ error: 'Hotel ID is required' }); 
     }
     if (!checkIn || !checkOut) {
-        return res.status(400).json({ error: 'Check-in and check-out dates are required' });
+        return res.status(400).json({ error: 'Check-in and check-out dates are required' }); 
     }
 
     try {
         const data = await fetchRoomAvailability(hotelId, checkIn, checkOut);
-        res.status(200).json(data);
+        return res.status(200).json(data);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        if (!res.headersSent) { 
+            return res.status(500).json({ error: error.message });
+        }
     }
 };
+
 
 const getHotelDetails = async (req, res) => {
     const { hotelId, arrivalDate, departureDate } = req.query;
