@@ -27,6 +27,10 @@ const fetchAirportSuggestions = async (cityName) => {
 
 const fetchFlightSearchResults = async (params) => {
   try {
+    console.log('Received sort parameter:', params.sort);
+
+    const sortParam = params.sort?.toLowerCase() || 'best';
+
     const response = await axios.get(
       `https://${process.env.API_HOST}/api/v1/flights/searchFlights`,
       {
@@ -38,19 +42,26 @@ const fetchFlightSearchResults = async (params) => {
           fromId: params.fromId,
           toId: params.toId,
           departDate: params.departureDate,
-          returnDate: params.returnDate ? params.returnDate : undefined, 
+          returnDate: params.returnDate ? params.returnDate : undefined,
           adults: params.adults,
+          children: params.children,
           cabinClass: params.cabinClass,
-          currency_code: 'CAD', 
+          currency_code: 'CAD',
+          sort: sortParam,
+          pageNo: params.pageNo,
         },
       }
     );
+
+    console.log('API Response:', response.data);
+
     return response.data;
   } catch (error) {
     console.error('Error in fetchFlightSearchResults:', error.message);
     throw new Error('Failed to fetch flight search results');
   }
 };
+
 
 
 const fetchDestinationCode = async (location) => {

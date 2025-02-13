@@ -1,4 +1,4 @@
-const admin = require('firebase-admin');
+// const admin = require('firebase-admin');
 const fs = require('fs');
 const dotenv = require('dotenv');
 
@@ -14,6 +14,7 @@ const userRoutes = require('./routes/userRoutes');
 const flightRoutes = require('./routes/flightRoutes');
 const carRentalRoutes = require('./routes/carRentalRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
+const airportRoutes = require("./routes/airportRoutes")
 const paymentRoutes = require('./routes/paymentRoutes');
 const { handlePaymentWebhook } = require('./controllers/PaymentController');
 
@@ -60,6 +61,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 connectDB();
 app.use('/user',userRoutes);
 // API Routes
+app.use("/airports", airportRoutes);
 app.use('/flights', flightRoutes);
 app.use('/car_rental', carRentalRoutes);
 app.use('/hotels', hotelRoutes);
@@ -67,6 +69,7 @@ app.use('/payment', paymentRoutes);
 
 // Start the server
 const PORT = process.env.SERVER_PORT;
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

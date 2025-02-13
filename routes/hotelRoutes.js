@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const hotelController = require('../controllers/HotelController'); // ✅ Ensure this path is correct
+const hotelController = require('../controllers/HotelController'); 
 
 router.get('/destination-code', hotelController.getDestinationCode);
 router.get('/hotels', hotelController.getHotelData);
