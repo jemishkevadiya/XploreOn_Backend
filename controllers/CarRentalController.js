@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Booking = require('../models/Booking');
 const {createCheckoutSession} = require('../controllers/PaymentController')
 
+
 exports.searchCarRentalsWithCoordinates = async (req, res) => {
     const { pickupLocation, dropOffLocation, pickUpDate, dropOffDate, pickUpTime, dropOffTime, passengers, currencyCode } = req.query;
 
