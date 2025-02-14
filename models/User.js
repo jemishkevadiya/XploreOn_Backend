@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema({
         default: 'user',
     },
     photoURL: {
-        type: String, // Firebase profile picture
+        type: String, 
         default: "",
     },
     createdAt: {
