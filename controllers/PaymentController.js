@@ -116,7 +116,7 @@ const handlePaymentWebhook = async (req, res) => {
         // STEP 4: Send confirmation email
         sendConfirmationEmail(email, {
           paymentIntentId,
-          amount: session.amount_total / 100,
+          amount: session.amount_total,
           service: booking.serviceType,
         });
 

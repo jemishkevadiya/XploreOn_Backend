@@ -1,6 +1,8 @@
 const { fetchPickupCoordinates, fetchDropOffCoordinates, searchCarRentals } = require('../utils/api');
 const User = require('../models/User');
 const Booking = require('../models/Booking');
+const {createCheckoutSession} = require('../controllers/PaymentController')
+
 
 exports.searchCarRentalsWithCoordinates = async (req, res) => {
     const { pickupLocation, dropOffLocation, pickUpDate, dropOffDate, pickUpTime, dropOffTime, passengers, currencyCode } = req.query;
@@ -93,7 +95,6 @@ exports.createCarRentalBooking = async (req, res) => {
             price: rentalDetails.price
         };
 
-
         const newBooking = new Booking({
             userId: userId, 
             serviceType: 'car_rental',  
@@ -103,9 +104,11 @@ exports.createCarRentalBooking = async (req, res) => {
         });
 
         // Save the booking to the database
-        await newBooking.save();
+        const booking = await newBooking.save();
+        const paymentUrl = await createCheckoutSession(booking._id.toString(), totalAmount)
 
-        res.status(201).json({ message: 'Car rental booking created successfully', booking: newBooking });
+
+        res.status(201).json({ message: 'Car rental booking created successfully', paymentUrl: paymentUrl });
     } catch (error) {
         console.error('Error creating car rental booking:', error);
         res.status(500).json({ message: 'Error creating car rental booking', error: error.message });
