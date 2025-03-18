@@ -15,14 +15,12 @@ exports.createUser = async (req, res) => {
             return res.status(400).json({ message: "Missing required fields" });
         }
 
-        // Check if user already exists
         let existingUser = await User.findOne({ uid });
         if (existingUser) {
             console.log("User already exists:", existingUser);
             return res.status(200).json({ message: "User already exists", user: existingUser });
         }
 
-        //  Automatically assign "user" role (MongoDB default)
         const newUser = new User({ uid, firstname, lastname, email, photoURL });
         await newUser.save();
 
@@ -30,16 +28,15 @@ exports.createUser = async (req, res) => {
         res.status(201).json({ message: "User created successfully", user: newUser });
 
     } catch (error) {
-        console.error(" Error creating user:", error); // Log detailed error
+        console.error(" Error creating user:", error);
         res.status(500).json({ message: "Error creating user", error: error.message });
     }
 };
 
 exports.getUserProfile = async (req, res) => {
     try {
-        console.log("Fetching user with UID:", req.params.uid); // Debugging log
+        console.log("Fetching user with UID:", req.params.uid); 
 
-        //  Ensure you are searching by `uid`
         const user = await User.findOne({ uid: req.params.uid });
 
         if (!user) {
@@ -99,22 +96,19 @@ exports.updateUser = async (req, res) => {
 
 exports.getUserBookings = async (req, res) => {
     try {
-        const { userId } = req.params;  // Get userId (Firebase UID) from the request params
+        const { userId } = req.params;  
 
-        // Check if the user exists using Firebase UID
         const user = await User.findOne({ uid: userId });
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
 
-        // Fetch all bookings for this user
-        const bookings = await Booking.find({ userId: userId });  // Query bookings by `userId`
+        const bookings = await Booking.find({ userId: userId });  
 
         if (bookings.length === 0) {
             return res.status(404).json({ message: 'No bookings found for this user' });
         }
 
-        // Return the bookings
         res.status(200).json({ bookings });
     } catch (error) {
         console.error('Error fetching user bookings:', error);
