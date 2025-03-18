@@ -1,6 +1,6 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const Booking = require("../models/Booking"); // Adjust path if needed
-const User = require("../models/User"); // Adjust path if needed
+const Booking = require("../models/Booking"); 
+const User = require("../models/User"); 
 const Payment = require('../models/PaymentModel');
 const { sendConfirmationEmail } = require('./EmailController');
 const mongoose = require('mongoose');
@@ -59,7 +59,6 @@ const createCheckoutSession = async (bookingId, totalAmount) => {
   }
 };
 
-// Handle Stripe Webhook
 const handlePaymentWebhook = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -80,10 +79,7 @@ const handlePaymentWebhook = async (req, res) => {
         const paymentIntentId = session.payment_intent || null;
         const bookingId = session.metadata.bookingId;
         console.log({ paymentIntentId, bookingId })
-        // ** From the booking id get userId, booking details from userId get user email and send verification email to that user
-        // ** Change the status to completed to that charge_id find the payment using booking id
-
-        // STEP 1: Find the booking (Get userId)
+     
         const booking = await Booking.findById(bookingId);
 
         if (!booking) {
@@ -91,11 +87,9 @@ const handlePaymentWebhook = async (req, res) => {
           break;
         }
 
-        const userId = booking.userId; // Since it's a string, no need for ._id
+        const userId = booking.userId; 
         console.log(` Found User ID: ${userId}`);
 
-        // STEP 2: Find the user details using userId
-        // get the email direcly
         const user = await User.findOne({uid: userId});
 
         if (!user) {
@@ -103,17 +97,16 @@ const handlePaymentWebhook = async (req, res) => {
           break;
         }
 
-        const email = user.email; // Get user email
+        const email = user.email; 
         console.log(` User Email: ${email}`);
 
-        // STEP 3: Update payment status
         await Payment.findOneAndUpdate(
           { bookingId },
           { status: "completed", paymentIntentId: paymentIntentId },
           { new: true }
         );
 
-        // STEP 4: Send confirmation email
+  
         sendConfirmationEmail(email, {
           paymentIntentId,
           amount: session.amount_total / 100,
@@ -121,7 +114,7 @@ const handlePaymentWebhook = async (req, res) => {
         });
 
         console.log(` Email sent to ${email}`);
-        // break;
+
       } catch (e) {
         console.log(e);
       }
@@ -132,7 +125,6 @@ const handlePaymentWebhook = async (req, res) => {
         const session = event.data.object;
         const bookingId = session.metadata.bookingId;
 
-        // ** If for any reason payment is not successed delete the booking
         await Booking.deleteById(bookingId);
         await Payment.updateOneAndUpdate(
           {bookingId},
@@ -155,7 +147,6 @@ const handlePaymentWebhook = async (req, res) => {
           {new : true}
         )
         await Booking.deleteById(payment.bookingId);
-        // ** if the user disputes the charge then delete the booking
 
         break;
       } catch (e) {

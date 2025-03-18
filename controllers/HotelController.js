@@ -19,9 +19,7 @@ const normalizeLocation = (location) => {
 const retrieveDestinationCode = async (location) => {
     try {
         const normalizedLocation = normalizeLocation(location.trim());
-
         const response = await fetchDestinationCode(normalizedLocation);
-
         if (response && response.data && response.data.length > 0) {
             const primaryDestination = response.data[0];
             return {
@@ -291,6 +289,7 @@ const getSortOptions = async (req, res) => {
  
 
 module.exports = {
+    retrieveDestinationCode,
     getDestinationCode,
     getHotelData,
     getRoomAvailability,
