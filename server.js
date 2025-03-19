@@ -22,13 +22,13 @@ const app = express();
 
 app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePaymentWebhook);
 
-const credentials = JSON.parse(
-  fs.readFileSync('./credentials.json')
-);
+// const credentials = JSON.parse(
+//   fs.readFileSync('./credentials.json')
+// );
 
-admin.initializeApp({
-  credential: admin.credential.cert(credentials)
-});
+// admin.initializeApp({
+//   credential: admin.credential.cert(credentials)
+// });
 
 app.use(cors({ origin: "http://localhost:3000" }));
 
