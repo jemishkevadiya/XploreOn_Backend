@@ -84,9 +84,6 @@ const fetchFlightSearchResults = async (params) => {
         },
       }
     );
-
-    console.log('API Response:', response.data);
-
     return response.data;
   } catch (error) {
     console.error('Error in fetchFlightSearchResults:', error.message);
@@ -109,7 +106,6 @@ const fetchDestinationCode = async (location) => {
         },
       }
     );
-    console.log('Destination API Response:', JSON.stringify(response.data, null, 2));
     return response.data; 
   } catch (error) {
     console.error('Error fetching destination code:', error.response?.data || error.message);
@@ -141,7 +137,6 @@ const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQt
         },
       }
     );
-    console.log('Hotel API Response:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error('Error fetching hotel data:', error.response?.data || error.message);
@@ -215,7 +210,6 @@ const fetchHotelPhotos = async (hotelId) => {
         },
       }
     );
-
     return response.data;
   } catch (error) {
     console.error(" Error fetching hotel photos:", error.response?.data || error.message);
