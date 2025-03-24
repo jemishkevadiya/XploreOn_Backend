@@ -125,13 +125,13 @@ exports.generateItinerary = async (req, res) => {
                         const checkInDate = new Date(fromDate);
                         const checkOutDate = new Date(toDate);
                         const totalNights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-
+        
                         itinerary.hotels = data.data.hotels.map(hotel => {
-                            const nightlyPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 
-                                                hotel.price || 
-                                                hotel.totalPrice || 
-                                                0;
-                            const totalPrice = nightlyPrice * totalNights;
+                            let totalPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 
+                                            hotel.price || 
+                                            hotel.totalPrice || 
+                                            0;
+        
                             const roomNumber = hotel.property?.rooms?.[0]?.name || 
                                               hotel.roomName || 
                                               hotel.rooms?.[0]?.description || 
@@ -142,14 +142,15 @@ exports.generateItinerary = async (req, res) => {
                                               'Standard Room';
                             return {
                                 name: hotel.property?.name || hotel.name || 'Unnamed Hotel',
-                                price: totalPrice,
+                                price: totalPrice, 
                                 currency: hotel.property?.priceBreakdown?.grossPrice?.currency || 
                                          hotel.currency || 
                                          'CAD',
                                 roomNumber: roomNumber,
                                 reviewScore: hotel.property?.reviewScore || hotel.reviewScore || null,
                                 checkInDate: hotel.property?.checkinDate || fromDate,
-                                checkOutDate: hotel.property?.checkoutDate || toDate
+                                checkOutDate: hotel.property?.checkoutDate || toDate,
+                                totalNights: totalNights 
                             };
                         });
                     } else {
