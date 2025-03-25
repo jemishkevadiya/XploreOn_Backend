@@ -9,11 +9,13 @@ const express = require('express');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); 
 const connectDB = require('./config/db');
 const bodyParser = require('body-parser');
-
 const userRoutes = require('./routes/userRoutes');
 const flightRoutes = require('./routes/flightRoutes');
 const carRentalRoutes = require('./routes/carRentalRoutes');
 const hotelRoutes = require('./routes/hotelRoutes');
+const restaurantRoutes = require('./routes/restaurantRoutes');
+const tourRoutes = require('./routes/tourRoutes');
+const itineraryRoutes = require('./routes/itineraryRoutes');  
 const airportRoutes = require("./routes/airportRoutes")
 const paymentRoutes = require('./routes/paymentRoutes');
 const { handlePaymentWebhook } = require('./controllers/PaymentController');
@@ -32,14 +34,14 @@ app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePa
 
 app.use(cors({ origin: "http://localhost:3000" }));
 
-// // Middleware for parsing JSON (excluding webhooks)
-// app.use((req, res, next) => {
-//   if (req.originalUrl === '/payment/webhook') {
-//     next();
-//   } else {
-//     express.json()(req, res, next);
-//   }
-// });
+// Middleware for parsing JSON (excluding webhooks)
+app.use((req, res, next) => {
+  if (req.originalUrl === '/payment/webhook') {
+    next();
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 // app.use(async function(req, res, next) {
 //   const { authtoken } = req.headers;
@@ -57,17 +59,20 @@ app.use(cors({ origin: "http://localhost:3000" }));
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// // Connect to the database
+
 connectDB();
 app.use('/user',userRoutes);
-// API Routes
+
 app.use("/airports", airportRoutes);
 app.use('/flights', flightRoutes);
 app.use('/car_rental', carRentalRoutes);
+app.use('/restaurants', restaurantRoutes);
+app.use('/tour-places', tourRoutes);  
+app.use('/itinerary', itineraryRoutes);
 app.use('/hotels', hotelRoutes);
 app.use('/payment', paymentRoutes);
 
-// Start the server
+
 const PORT = process.env.SERVER_PORT;
 
 app.listen(PORT, () => {
