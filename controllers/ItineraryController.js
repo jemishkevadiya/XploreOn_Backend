@@ -166,11 +166,13 @@ exports.generateItinerary = async (req, res) => {
             try {
                 const pickUpCoordinates = await fetchPickupCoordinates(destination);
                 const dropOffCoordinates = await fetchDropOffCoordinates(destination);   
+                console.log('PickUp Coordinates:', pickUpCoordinates);
+                console.log('DropOff Coordinates:', dropOffCoordinates);
                 
                 if (!pickUpCoordinates || !dropOffCoordinates) {
                     throw new Error('Failed to fetch car rental coordinates');
                 }    
-
+        
                 const carRentalParams = {
                     pickUpCoordinates,
                     dropOffCoordinates,
@@ -180,9 +182,10 @@ exports.generateItinerary = async (req, res) => {
                     dropOffTime: '10:00',
                     currencyCode: 'CAD'
                 };
-
+        
                 const carRentalResponse = await searchCarRentals(carRentalParams);
-
+                console.log('Car Rental API Response:', JSON.stringify(carRentalResponse, null, 2));
+        
                 if (!carRentalResponse || !carRentalResponse.data) {
                     itinerary.carRentals = null;
                     itinerary.messages.push('No car rentals available: Invalid response from car rental API.');
@@ -212,11 +215,16 @@ exports.generateItinerary = async (req, res) => {
             if (!tourData || tourData.length === 0) {
                 throw new Error('No valid tour places found');
             }
-            itinerary.tourPlaces = tourData.map(tour => ({
-                name: tour.name,
-                description: tour.description || 'No description available',
-                images: tour.imageUrl ? [tour.imageUrl] : tour.images || []
-            }));
+            itinerary.tourPlaces = tourData.map(tour => {
+                const imageUrl = tour.imageUrl && tour.imageUrl !== 'https://via.placeholder.com/200' 
+                    ? tour.imageUrl 
+                    : 'https://via.placeholder.com/200'; 
+                return {
+                    name: tour.name,
+                    description: tour.description || 'No description available',
+                    images: [imageUrl], 
+                };
+            });
         }
 
         if (budget) {
@@ -338,17 +346,17 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
         const carDetails = itinerary.carRentals.content.search_results.map(car => {
             let price = car.pricing_info?.base_price || car.pricing_info?.total_price || 0;
             let currency = car.pricing_info?.currency || car.pricing_info?.base_price_currency || 'INR';
-
+    
             if (currency === 'INR' || price > 1000) {
                 const exchangeRate = 0.01673;
                 price = price * exchangeRate;
                 price = Math.round(price * 100) / 100;
                 currency = 'CAD';
             }
-
+    
             const vehicle = car.vehicle_info?.name || car.vehicle_info?.v_name || 'Unknown Vehicle';
             const supplier = car.supplier_info?.name || 'Unknown Supplier';
-
+    
             return {
                 price,
                 currency,
@@ -356,7 +364,7 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
                 supplier
             };
         });
-
+    
         const uniqueCarDetails = [];
         const seen = new Set();
         for (const car of carDetails) {
@@ -366,25 +374,45 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
                 uniqueCarDetails.push(car);
             }
         }
-
+    
+        console.log('Unique Car Details:', uniqueCarDetails);
+    
         uniqueCarDetails.sort((a, b) => a.price - b.price);
-        const selectedCar = uniqueCarDetails.length > 0 ? uniqueCarDetails[0] : null;
-        itinerary.carRentals = selectedCar;
+    
+        // Calculate total people and cars needed
+        const childCount = childrenAges ? childrenAges.split(',').length : 0;
+        const totalPeople = adults + childCount;
+        const carsNeeded = Math.ceil(totalPeople / 4); // 1 car per 4 people
+        console.log(`Total People: ${totalPeople}, Cars Needed: ${carsNeeded}`);
+    
+        // Select the cheapest cars based on the number needed
+        const selectedCars = uniqueCarDetails.slice(0, carsNeeded);
+        console.log('Selected Cars:', selectedCars);
+        itinerary.carRentals = selectedCars.length > 0 ? selectedCars : null;
+    
+        // Adjust total price for budget comparison
+        if (selectedCars) {
+            const totalCarPrice = selectedCars.reduce((sum, car) => sum + car.price, 0);
+            console.log('Total Car Price:', totalCarPrice, 'Budget Per Service:', budgetPerService);
+            if (totalCarPrice > budgetPerService) {
+                itinerary.carRentals = null; // If total price exceeds budget, remove car rentals
+            }
+        }
     } else if (itinerary.carRentals && Array.isArray(itinerary.carRentals.search_results)) {
         const carDetails = itinerary.carRentals.search_results.map(car => {
             let price = car.pricing_info?.base_price || car.pricing_info?.total_price || 0;
             let currency = car.pricing_info?.currency || car.pricing_info?.base_price_currency || 'INR';
-
+    
             if (currency === 'INR' || price > 1000) {
                 const exchangeRate = 0.01673;
                 price = price * exchangeRate;
                 price = Math.round(price * 100) / 100;
                 currency = 'CAD';
             }
-
+    
             const vehicle = car.vehicle_info?.name || car.vehicle_info?.v_name || 'Unknown Vehicle';
             const supplier = car.supplier_info?.name || 'Unknown Supplier';
-
+    
             return {
                 price,
                 currency,
@@ -392,7 +420,7 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
                 supplier
             };
         });
-
+    
         const uniqueCarDetails = [];
         const seen = new Set();
         for (const car of carDetails) {
@@ -402,11 +430,32 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
                 uniqueCarDetails.push(car);
             }
         }
-
+    
+        console.log('Unique Car Details:', uniqueCarDetails);
+    
         uniqueCarDetails.sort((a, b) => a.price - b.price);
-        const selectedCar = uniqueCarDetails.length > 0 ? uniqueCarDetails[0] : null;
-        itinerary.carRentals = selectedCar;
+    
+        // Calculate total people and cars needed
+        const childCount = childrenAges ? childrenAges.split(',').length : 0;
+        const totalPeople = adults + childCount;
+        const carsNeeded = Math.ceil(totalPeople / 4); // 1 car per 4 people
+        console.log(`Total People: ${totalPeople}, Cars Needed: ${carsNeeded}`);
+    
+        // Select the cheapest cars based on the number needed
+        const selectedCars = uniqueCarDetails.slice(0, carsNeeded);
+        console.log('Selected Cars:', selectedCars);
+        itinerary.carRentals = selectedCars.length > 0 ? selectedCars : null;
+    
+        // Adjust total price for budget comparison
+        if (selectedCars) {
+            const totalCarPrice = selectedCars.reduce((sum, car) => sum + car.price, 0);
+            console.log('Total Car Price:', totalCarPrice, 'Budget Per Service:', budgetPerService);
+            if (totalCarPrice > budgetPerService) {
+                itinerary.carRentals = null; // If total price exceeds budget, remove car rentals
+            }
+        }
     } else {
+        console.log('No valid car rental data structure found:', itinerary.carRentals);
         itinerary.carRentals = null;
     }
 
