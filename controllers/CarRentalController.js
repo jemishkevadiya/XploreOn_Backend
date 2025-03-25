@@ -103,7 +103,7 @@ exports.createCarRentalBooking = async (req, res) => {
             paymentStatus: 'pending' 
         });
 
-        // Save the booking to the database
+
         const booking = await newBooking.save();
         const paymentUrl = await createCheckoutSession(booking._id.toString(), totalAmount)
 
