@@ -13,7 +13,6 @@ exports.searchCarRentalsWithCoordinates = async (req, res) => {
             return res.status(400).json({ message: 'Please provide all required fields.' });
         }
 
-
         const currentDate = new Date();
         const pickupDateObj = new Date(pickUpDate);
         const dropoffDateObj = new Date(dropOffDate);
@@ -26,24 +25,19 @@ exports.searchCarRentalsWithCoordinates = async (req, res) => {
             return res.status(400).json({ message: 'Drop-off date must be in the future.' });
         }
 
-
         if (dropoffDateObj <= pickupDateObj) {
             return res.status(400).json({ message: 'Drop-off date must be after the pick-up date.' });
         }
-
 
         const pickupCoordinates = await fetchPickupCoordinates(pickupLocation);
         if (!pickupCoordinates) {
             return res.status(400).json({ message: `Pickup location not found: ${pickupLocation}` });
         }
 
-
         const dropOffCoordinates = await fetchDropOffCoordinates(dropOffLocation);
         if (!dropOffCoordinates) {
             return res.status(400).json({ message: `Drop-off location not found: ${dropOffLocation}` });
         }
-
-
 
         const carRentals = await searchCarRentals({
             pickUpCoordinates: {
@@ -78,12 +72,10 @@ exports.createCarRentalBooking = async (req, res) => {
     try {
         const { userId, rentalDetails, totalAmount } = req.body;
 
-
         const user = await User.findOne({ uid: userId });  
         if (!user) {
             return res.status(404).json({ message: 'User not found' });
         }
-
 
         const carRentalDetails = {
             carType: rentalDetails.carType,
@@ -102,11 +94,6 @@ exports.createCarRentalBooking = async (req, res) => {
             totalAmount: totalAmount,
             paymentStatus: 'pending' 
         });
-
-        // Save the booking to the database
-        const booking = await newBooking.save();
-        const paymentUrl = await createCheckoutSession(booking._id.toString(), totalAmount)
-
 
         res.status(201).json({ message: 'Car rental booking created successfully', paymentUrl: paymentUrl });
     } catch (error) {

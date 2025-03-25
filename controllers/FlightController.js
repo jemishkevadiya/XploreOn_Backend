@@ -2,11 +2,7 @@ const { fetchFlightSearchResults, fetchAirportSuggestions } = require('../utils/
 const User = require('../models/User')
 const Booking = require(`../models/Booking`);
 const {createCheckoutSession} = require('./PaymentController');
-/**
- * Resolves the airport code for a given city
- * @param {string} city - City name to fetch airport suggestions
- * @returns {string|null} - The airport code or null if not found
- */
+
 const resolveAirportCode = async (city) => {
   if (!city) {
     console.error('City name is null or undefined');
@@ -40,17 +36,6 @@ const resolveAirportCode = async (city) => {
 };
 
 
-/**
- * Validates flight search parameters
- * @param {string} origin - Origin airport code or city name
- * @param {string} destination - Destination airport code or city name
- * @param {string} departureDate - Departure date (YYYY-MM-DD)
- * @param {string} returnDate - Return date (YYYY-MM-DD, optional)
- * @param {number} passengers - Number of passengers (must be at least 1)
- * @param {string} travelClass - Travel class (e.g., economy, business)
- * @param {string} tripType - Trip type (One Way or RoundTrip)
- * @returns {Object} Validation result with isValid and message
- */
 const validateFlightSearch = (origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort, pageNo) => {
   if (!origin || !destination || !departureDate || !adults || !travelClass || !tripType || !sort || !pageNo ) {
     return { isValid: false, message: 'Please fill in all required fields.' };
@@ -98,11 +83,6 @@ const validateFlightSearch = (origin, destination, departureDate, returnDate, ad
   return { isValid: true };
 };
 
-/**
- * Fetch flight search results based on user query
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
 exports.getFlightSearchResults = async (req, res) => {
   let { origin, destination, departureDate, returnDate, adults, children, travelClass, tripType, sort, pageNo } = req.query;
 
@@ -159,11 +139,6 @@ exports.getFlightSearchResults = async (req, res) => {
   }
 };
 
-/**
- * Fetch airport suggestions based on city name
- * @param {Object} req - Express request object
- * @param {Object} res - Express response object
- */
 exports.getAirportSuggestions = async (req, res) => {
   const { query } = req.query;
 
@@ -186,16 +161,12 @@ exports.getAirportSuggestions = async (req, res) => {
 
 exports.createFlightBooking = async (req, res) => {
   try {
-      // ** get the user id of the user from req.user.uid
-      // ** const userId = req.user.uid;
-      const { flightDetails, totalAmount, userId } = req.body;  // userId will be the Firebase `uid`
-      // Check if the user exists using Firebase UID
-      const user = await User.findOne({ uid: userId });  // Find user by Firebase `uid`
+      const { flightDetails, totalAmount, userId } = req.body; 
+      const user = await User.findOne({ uid: userId }); 
       if (!user) {
           return res.status(404).json({ message: 'User not found' });
       }
 
-      // Prepare the booking details
       const bookingDetails = {
           departureCity: flightDetails.departureCity,
           destinationCity: flightDetails.destinationCity,
@@ -204,21 +175,14 @@ exports.createFlightBooking = async (req, res) => {
           passengers: flightDetails.passengers,
       };
 
-      // Create a new booking record using `userId` (Firebase UID as a string)
       const newBooking = new Booking({
-          userId: userId,  // Firebase UID as userId
-          serviceType: 'flight',  // Indicating it's a flight booking
+          userId: userId,  
+          serviceType: 'flight',  
           bookingDetails: bookingDetails,
           totalAmount: totalAmount,
-          paymentStatus: 'pending'  // Default to pending until payment is processed
+          paymentStatus: 'pending'  
       });
 
-
-      // ** Save the booking into a variable -> Get the id, then call create payment session from payment controller
-      // ** you have the booking id -> you have the amount 
-      // ** you have the booking details
-      // ** get the url from the checkout session and return that url
-      // Save the booking to the database
       const booking = await newBooking.save();
       const paymentUrl = await createCheckoutSession(booking._id.toString(), totalAmount);
       console.log(paymentUrl);
