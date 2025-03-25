@@ -4,6 +4,6 @@ const { createCheckoutSession, handlePaymentWebhook, getPaymentDetails } = requi
 
 router.post('/checkout-session', createCheckoutSession);
 router.post('/webhook', express.raw({ type: 'application/json' }), handlePaymentWebhook);
-router.get('/:paymentIntentId', getPaymentDetails); // Added new route for fetching payment details
+router.get('/:paymentIntentId', getPaymentDetails); 
 
 module.exports = router;
