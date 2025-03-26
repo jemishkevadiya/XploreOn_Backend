@@ -58,9 +58,9 @@ const getDestinationCode = async (req, res) => {
     }
 };
 
-
 const getHotelData = async (req, res) => {
-    const { location, checkIn, checkOut, person, roomQty, sortBy, sortOrder, amenities } = req.query;
+    const { location, checkIn, checkOut, person, roomQty, page_number, sortBy, sortOrder, amenities } = req.query;
+
 
     if (!location || typeof location !== 'string' || location.trim() === '') {
         return res.status(400).json({ error: 'Valid location is required' });
@@ -86,6 +86,9 @@ const getHotelData = async (req, res) => {
     if (roomQty && (isNaN(roomQty) || roomQty <= 0)) {
         return res.status(400).json({ error: 'Valid room quantity greater than 0 is required' });
     }
+    if (page_number && (isNaN(page_number) || page_number < 1)) {
+        return res.status(400).json({ error: 'Valid page_number greater than 0 is required' });
+    }
 
     try {
         const trimmedLocation = location.trim();
@@ -102,7 +105,8 @@ const getHotelData = async (req, res) => {
             checkIn,
             checkOut,
             parseInt(person, 10),
-            parseInt(roomQty, 10) || 1  
+            parseInt(roomQty, 10) || 1,
+            parseInt(page_number, 10) || 1 
         );
 
         if (!Array.isArray(data)) {
@@ -117,7 +121,9 @@ const getHotelData = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-};const getRoomAvailability = async (req, res) => {
+};
+
+const getRoomAvailability = async (req, res) => {
     const { 
         hotelId, 
         checkIn, 
