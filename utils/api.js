@@ -161,8 +161,8 @@ const fetchRoomAvailability = async (hotelId, checkIn, checkOut) => {
               },
               params: {
                   hotel_id: hotelId,    
-                  min_date: checkIn,    
-                  max_date: checkOut,  
+                  arrival_date: checkIn,    
+                  departure_date: checkOut,  
                   currency_code: 'CAD'  
               }
           }
@@ -199,6 +199,71 @@ const fetchHotelDetails = async (hotelId, arrivalDate, departureDate) => {
   }
 };
 
+
+
+const fetchRoomListWithDetails = async (hotelId, arrival_date, departure_date, currency_code) => {
+  try {
+    const response = await axios.get(
+      `https://${process.env.API_HOST}/api/v1/hotels/getRoomList`,
+      {
+        headers: {
+          'x-rapidapi-key': process.env.API_KEY,
+          'x-rapidapi-host': process.env.API_HOST,
+        },
+        params: {
+          hotel_id: hotelId,
+          arrival_date, 
+          departure_date, 
+          adults: 1,
+          children_age: "1,0", 
+          room_qty: 1, 
+          units: "metric", 
+          temperature_unit: "c", 
+          languagecode: "en-us",
+          currency_code, 
+        },
+      }
+    );
+    console.log('Room List With Details API Response:', JSON.stringify(response.data, null, 2));
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching room list with details:", error.response?.data || error.message);
+    throw new Error("Failed to fetch room list with details");
+  }
+};
+
+
+const fetchRoomListWithAvailability = async (hotelId, arrival_date, departure_date, currency_code) => {
+  try {
+    console.log('Fucking calling getRoomListWithAvailability with params:', { hotelId, arrival_date, departure_date, currency_code });
+    const response = await axios.get(
+      `https://${process.env.API_HOST}/api/v1/hotels/getRoomListWithAvailability`,
+      {
+        headers: {
+          'x-rapidapi-key': process.env.API_KEY,
+          'x-rapidapi-host': process.env.API_HOST,
+        },
+        params: {
+          hotel_id: hotelId,
+          arrival_date, 
+          departure_date,
+          adults: 1, 
+          children_age: "1,0", 
+          room_qty: 1, 
+          units: "metric", 
+          temperature_unit: "c", 
+          languagecode: "en-us",
+          currency_code, 
+        },
+      }
+    );
+    console.log('getRoomListWithAvailability API Response, you bastard:', JSON.stringify(response.data, null, 2));
+    return response.data;
+  } catch (error) {
+    console.error("Fucking error fetching room list with availability, asshole:", error.response?.data || error.message);
+    throw new Error("Failed to fetch room list with availability, dickhead");
+  }
+};
 
 const fetchHotelPhotos = async (hotelId) => {
   try {
@@ -491,6 +556,8 @@ module.exports = {
   fetchHotelPhotos,
   fetchHotelFacilities,
   fetchHotelFilters,
+  fetchRoomListWithDetails,
+  fetchRoomListWithAvailability,
   fetchSortOptions,
   fetchPickupCoordinates,
   fetchDropOffCoordinates,
