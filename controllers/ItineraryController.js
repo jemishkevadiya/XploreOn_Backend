@@ -1,34 +1,53 @@
-const { fetchAirportSuggestions, fetchFlightSearchResults, fetchHotelData, fetchPickupCoordinates, 
+const { fetchAirportSuggestions, fetchFlightSearchResults, fetchDestinationCode, fetchHotelData, fetchPickupCoordinates, 
     fetchDropOffCoordinates, searchTourLocation, searchRestaurants, searchAttractions, searchCarRentals, 
     searchLocation } = require('../utils/api');
-const { retrieveDestinationCode } = require('../controllers/HotelController');
-
-const carrierCodeToName = {
-    "GE": "IndiGo",
-    "AC": "Air Canada",
-    "DL": "Delta Air Lines",
-    "AA": "American Airlines",
-    "UA": "United Airlines"
-};
 
 const resolveAirportCode = async (city) => {
     if (!city || typeof city !== 'string' || city.trim() === '') {
         return null;
     }
+
     try {
         const suggestions = await fetchAirportSuggestions(city);
-        if (!suggestions || suggestions.length === 0) {
-            return null;
-        }
-        const airport = suggestions.find(item => item.type === 'AIRPORT' && item.city.toLowerCase().includes(city.toLowerCase())) || 
-                       suggestions.find(item => item.type === 'AIRPORT') || 
-                       suggestions[0];
-        if (!airport || !airport.code) {
-            return null;
-        }
-        return `${airport.code}.AIRPORT`;
+        if (!suggestions || suggestions.length === 0) return null;
+
+        const airportSuggestions = suggestions.filter((item) => item.type === 'AIRPORT');
+        if (airportSuggestions.length === 0) return null;
+
+        const preferredAirport = airportSuggestions.find((item) =>
+            item.airport.toLowerCase().includes('international')
+        ) || airportSuggestions[0];
+
+        return `${preferredAirport.code}.AIRPORT`; 
     } catch (error) {
+        console.error('[resolveAirportCode] Error:', error.message);
         return null;
+    }
+};
+
+const normalizeLocation = (location) => {
+    return location.charAt(0).toUpperCase() + location.slice(1).toLowerCase();
+};
+
+const retrieveDestinationCode = async (location) => {
+    try {
+        const normalizedLocation = normalizeLocation(location.trim());
+
+        const response = await fetchDestinationCode(normalizedLocation);
+
+        if (response && response.data && response.data.length > 0) {
+            const primaryDestination = response.data[0];
+            return {
+                destinationCode: primaryDestination.dest_id,
+                name: primaryDestination.name,
+                region: primaryDestination.region,
+                country: primaryDestination.country,
+            };
+        } else {
+            throw new Error(`No destination code found for location: ${normalizedLocation}`);
+        }
+    } catch (error) {
+        throw error;
     }
 };
 
@@ -42,7 +61,8 @@ exports.generateItinerary = async (req, res) => {
         budget, 
         dietaryPreference, 
         adults = 1, 
-        childrenAges = ''
+        childrenAges = '',
+        preference = 'cheap'
     } = req.body;
 
     if (!origin || !destination || !fromDate || !toDate || !services || !Array.isArray(services)) {
@@ -82,6 +102,12 @@ exports.generateItinerary = async (req, res) => {
             });
         }
     }
+    if (!['cheap', 'best'].includes(preference)) {
+        return res.status(400).json({ 
+            error: 'Invalid preference', 
+            details: 'preference must be "cheap" or "best"' 
+        });
+    }
 
     let itinerary = {
         flights: null,
@@ -116,48 +142,24 @@ exports.generateItinerary = async (req, res) => {
             try {
                 const destinationData = await retrieveDestinationCode(destination);
                 if (!destinationData || !destinationData.destinationCode) {
+                    itinerary.messages.push(`No destination code found for ${destination}`);
                     itinerary.hotels = null;
                 } else {
                     const destinationCode = destinationData.destinationCode;
                     const childCount = childrenAges ? childrenAges.split(',').length : 0;
-                    let data = await fetchHotelData(destinationCode, fromDate, toDate, adults, childCount);
-                    if (data && data.data && data.data.hotels && data.data.hotels.length > 0) {
-                        const checkInDate = new Date(fromDate);
-                        const checkOutDate = new Date(toDate);
-                        const totalNights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
-        
-                        itinerary.hotels = data.data.hotels.map(hotel => {
-                            let totalPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 
-                                            hotel.price || 
-                                            hotel.totalPrice || 
-                                            0;
-        
-                            const roomNumber = hotel.property?.rooms?.[0]?.name || 
-                                              hotel.roomName || 
-                                              hotel.rooms?.[0]?.description || 
-                                              hotel.rooms?.[0]?.type || 
-                                              hotel.property?.roomType || 
-                                              hotel.property?.room?.name || 
-                                              hotel.room?.type || 
-                                              'Standard Room';
-                            return {
-                                name: hotel.property?.name || hotel.name || 'Unnamed Hotel',
-                                price: totalPrice, 
-                                currency: hotel.property?.priceBreakdown?.grossPrice?.currency || 
-                                         hotel.currency || 
-                                         'CAD',
-                                roomNumber: roomNumber,
-                                reviewScore: hotel.property?.reviewScore || hotel.reviewScore || null,
-                                checkInDate: hotel.property?.checkinDate || fromDate,
-                                checkOutDate: hotel.property?.checkoutDate || toDate,
-                                totalNights: totalNights 
-                            };
-                        });
+                    console.log(`[Hotel] Fetching hotel data with code: ${destinationCode}, from: ${fromDate}, to: ${toDate}, adults: ${adults}, children: ${childCount}`);
+                    const hotelData = await fetchHotelData(destinationCode, fromDate, toDate, adults, childCount);
+                    if (hotelData) {
+                        itinerary.hotels = hotelData.data?.hotels || hotelData.hotels || hotelData || null;
+                        console.log(`[Hotel] Extracted Hotel Data:`, JSON.stringify(itinerary.hotels, null, 2));
                     } else {
                         itinerary.hotels = null;
+                        console.log(`[Hotel] No hotel data returned`);
                     }
                 }
             } catch (error) {
+                console.error(`[Hotel] Error fetching hotels:`, error.stack);
+                itinerary.messages.push(`Hotel fetch error: ${error.message}`);
                 itinerary.hotels = null;
             }
         }
@@ -166,8 +168,6 @@ exports.generateItinerary = async (req, res) => {
             try {
                 const pickUpCoordinates = await fetchPickupCoordinates(destination);
                 const dropOffCoordinates = await fetchDropOffCoordinates(destination);   
-                console.log('PickUp Coordinates:', pickUpCoordinates);
-                console.log('DropOff Coordinates:', dropOffCoordinates);
                 
                 if (!pickUpCoordinates || !dropOffCoordinates) {
                     throw new Error('Failed to fetch car rental coordinates');
@@ -184,15 +184,9 @@ exports.generateItinerary = async (req, res) => {
                 };
         
                 const carRentalResponse = await searchCarRentals(carRentalParams);
-                console.log('Car Rental API Response:', JSON.stringify(carRentalResponse, null, 2));
-        
-                if (!carRentalResponse || !carRentalResponse.data) {
-                    itinerary.carRentals = null;
-                    itinerary.messages.push('No car rentals available: Invalid response from car rental API.');
-                } else {
-                    itinerary.carRentals = carRentalResponse.data;
-                }
+                itinerary.carRentals = carRentalResponse?.data || null;
             } catch (error) {
+                console.error('[Car] Error fetching car rentals:', error.message);
                 itinerary.carRentals = null;
                 itinerary.messages.push('Error fetching car rentals: ' + error.message);
             }
@@ -215,32 +209,22 @@ exports.generateItinerary = async (req, res) => {
             if (!tourData || tourData.length === 0) {
                 throw new Error('No valid tour places found');
             }
-            itinerary.tourPlaces = tourData.map(tour => {
-                const imageUrl = tour.imageUrl && tour.imageUrl !== 'https://via.placeholder.com/200' 
-                    ? tour.imageUrl 
-                    : 'https://via.placeholder.com/200'; 
-                return {
-                    name: tour.name,
-                    description: tour.description || 'No description available',
-                    images: [imageUrl], 
-                };
-            });
+            itinerary.tourPlaces = tourData;
         }
 
         if (budget) {
-            itinerary = filterItineraryByBudget(itinerary, budget, dietaryPreference, fromDate, toDate, adults, childrenAges);
+            itinerary = filterItineraryByBudget(itinerary, budget, dietaryPreference, fromDate, toDate, adults, childrenAges, preference);
         }
 
         res.status(200).json(itinerary);
     } catch (error) {
+        console.error('[Itinerary] Global error:', error.message);
         res.status(500).json({ error: 'Failed to generate itinerary', details: error.message });
     }
 };
 
-const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate, toDate, adults, childrenAges) => {
-    const pricedServices = ['flights', 'hotels', 'restaurants'].filter(key => itinerary[key]);
-    const activePricedServices = pricedServices.length || 1;
-    const budgetPerService = budget / activePricedServices;
+const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate, toDate, adults, childrenAges, preference) => {
+    let remainingBudget = budget;
 
     if (Array.isArray(itinerary.flights) && itinerary.flights.length > 0) {
         const childCount = childrenAges ? childrenAges.split(',').length : 0;
@@ -248,82 +232,144 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
 
         const flightDetails = itinerary.flights.map(flight => {
             let totalPrice = flight.priceBreakdown?.total?.units + (flight.priceBreakdown?.total?.nanos || 0) / 1e9 || null;
-            if (!totalPrice) {
-                return null;
-            }
+            if (!totalPrice) return null;
 
             const segments = flight.segments || [];
-            if (segments.length !== 2) {
-                return null;
-            }
+            if (segments.length !== 2) return null;
 
             const outboundSegment = segments[0];
             const returnSegment = segments[1];
             const outboundLegs = outboundSegment.legs || [];
             const returnLegs = returnSegment.legs || [];
 
-            if (outboundLegs.length === 0 || returnLegs.length === 0) {
-                return null;
-            }
-
-            const outboundDepartureTime = outboundSegment.departure?.dateTime || 
-                                          outboundSegment.departure?.at || 
-                                          outboundLegs[0]?.departure?.dateTime || 
-                                          outboundLegs[0]?.departure?.at || 
-                                          outboundLegs[0]?.departureTime || 
-                                          'Unknown';
-            const outboundArrivalTime = outboundSegment.arrival?.dateTime || 
-                                        outboundSegment.arrival?.at || 
-                                        outboundLegs[outboundLegs.length - 1]?.arrival?.dateTime || 
-                                        outboundLegs[outboundLegs.length - 1]?.arrival?.at || 
-                                        outboundLegs[outboundLegs.length - 1]?.arrivalTime || 
-                                        'Unknown';
-            const returnDepartureTime = returnSegment.departure?.dateTime || 
-                                        returnSegment.departure?.at || 
-                                        returnLegs[0]?.departure?.dateTime || 
-                                        returnLegs[0]?.departure?.at || 
-                                        returnLegs[0]?.departureTime || 
-                                        'Unknown';
-            const returnArrivalTime = returnSegment.arrival?.dateTime || 
-                                      returnSegment.arrival?.at || 
-                                      returnLegs[returnLegs.length - 1]?.arrival?.dateTime || 
-                                      returnLegs[returnLegs.length - 1]?.arrival?.at || 
-                                      returnLegs[returnLegs.length - 1]?.arrivalTime || 
-                                      'Unknown';
+            if (outboundLegs.length === 0 || returnLegs.length === 0) return null;
 
             return {
                 price: totalPrice,
                 currency: flight.priceBreakdown?.total?.currencyCode || 'CAD',
                 outbound: {
-                    airline: outboundLegs[0]?.carriersData?.[0]?.name || 
-                             carrierCodeToName[outboundLegs[0]?.carrierCode] || 
-                             'Unknown',
-                    departureTime: outboundDepartureTime,
-                    arrivalTime: outboundArrivalTime
+                    airline: outboundLegs[0]?.carriersData?.[0]?.name || (outboundLegs[0]?.carrierCode ? carrierCodeToName[outboundLegs[0].carrierCode] : 'Unknown'),
+                    departureTime: outboundSegment.departure?.dateTime || outboundSegment.departure?.at || outboundLegs[0]?.departure?.dateTime || outboundLegs[0]?.departure?.at || outboundLegs[0]?.departureTime || 'Unknown',
+                    arrivalTime: outboundSegment.arrival?.dateTime || outboundSegment.arrival?.at || outboundLegs[outboundLegs.length - 1]?.arrival?.dateTime || outboundLegs[outboundLegs.length - 1]?.arrival?.at || outboundLegs[outboundLegs.length - 1]?.arrivalTime || 'Unknown'
                 },
                 return: {
-                    airline: returnLegs[0]?.carriersData?.[0]?.name || 
-                             carrierCodeToName[returnLegs[0]?.carrierCode] || 
-                             'Unknown',
-                    departureTime: returnDepartureTime,
-                    arrivalTime: returnArrivalTime
+                    airline: returnLegs[0]?.carriersData?.[0]?.name || (returnLegs[0]?.carrierCode ? carrierCodeToName[returnLegs[0].carrierCode] : 'Unknown'),
+                    departureTime: returnSegment.departure?.dateTime || returnSegment.departure?.at || returnLegs[0]?.departure?.dateTime || returnLegs[0]?.departure?.at || returnLegs[0]?.departureTime || 'Unknown',
+                    arrivalTime: returnSegment.arrival?.dateTime || returnSegment.arrival?.at || returnLegs[returnLegs.length - 1]?.arrival?.dateTime || returnLegs[returnLegs.length - 1]?.arrival?.at || returnLegs[returnLegs.length - 1]?.arrivalTime || 'Unknown'
                 }
             };
-        }).filter(detail => detail !== null);
+        }).filter(detail => detail !== null && detail.price <= remainingBudget);
 
-        const sortedFlights = flightDetails.sort((a, b) => a.price - b.price);
-        const affordableFlights = sortedFlights.filter(detail => detail.price <= budgetPerService);
-        itinerary.flights = affordableFlights.length > 0 ? affordableFlights[0] : null;
+        if (flightDetails.length > 0) {
+            const selectedFlight = preference === 'cheap'
+                ? flightDetails.sort((a, b) => a.price - b.price)[0]
+                : flightDetails.sort((a, b) => b.price - a.price)[0];
+            itinerary.flights = selectedFlight;
+            remainingBudget -= selectedFlight.price;
+        } else {
+            itinerary.flights = null;
+            console.log(`[Budget] No affordable flights`);
+        }
     } else {
         itinerary.flights = null;
     }
 
     if (Array.isArray(itinerary.hotels) && itinerary.hotels.length > 0) {
-        const sortedHotels = itinerary.hotels.sort((a, b) => a.price - b.price);
-        const affordableHotels = sortedHotels.filter(hotel => hotel.price <= budgetPerService);
-        itinerary.hotels = affordableHotels.length > 0 ? affordableHotels[0] : null;
+        const hotelDetails = itinerary.hotels.map(hotel => {
+            let totalPrice = hotel.property?.priceBreakdown?.grossPrice?.value || 
+                            hotel.price || 
+                            hotel.totalPrice || 
+                            0;
+            return {
+                name: hotel.property?.name || hotel.name || 'Unnamed Hotel',
+                price: totalPrice, 
+                currency: hotel.property?.priceBreakdown?.grossPrice?.currency || 
+                         hotel.currency || 
+                         'CAD',
+                reviewScore: hotel.property?.reviewScore || hotel.reviewScore || 0,
+                checkInDate: hotel.property?.checkinDate || fromDate,
+                checkOutDate: hotel.property?.checkoutDate || toDate,
+                totalNights: Math.ceil((new Date(toDate) - new Date(fromDate)) / (1000 * 60 * 60 * 24))
+            };
+        }).filter(hotel => hotel.price <= remainingBudget);
+
+        console.log(`[Budget] Mapped Hotels:`, JSON.stringify(hotelDetails, null, 2));
+        if (hotelDetails.length > 0) {
+            const selectedHotel = preference === 'cheap'
+                ? hotelDetails.sort((a, b) => a.price - b.price)[0]
+                : hotelDetails.sort((a, b) => (b.reviewScore || 0) - (a.reviewScore || 0))[0];
+            itinerary.hotels = selectedHotel;
+            remainingBudget -= selectedHotel.price;
+        } else {
+            itinerary.hotels = null;
+            console.log(`[Budget] No affordable hotels`);
+        }
     } else {
         itinerary.hotels = null;
+        console.log(`[Budget] No hotels to process`);
+    }
+
+    if (itinerary.carRentals) {
+        const searchResults = itinerary.carRentals.content?.search_results || itinerary.carRentals.search_results || [];
+        if (Array.isArray(searchResults)) {
+            const carDetails = searchResults.map(car => {
+                let price = car.pricing_info?.base_price || car.pricing_info?.total_price || 0;
+                let currency = car.pricing_info?.currency || car.pricing_info?.base_price_currency || 'INR';
+                if (currency === 'INR' || price > 1000) {
+                    const exchangeRate = 0.01673;
+                    price = price * exchangeRate;
+                    price = Math.round(price * 100) / 100;
+                    currency = 'CAD';
+                }
+                return {
+                    price,
+                    currency,
+                    vehicle: car.vehicle_info?.name || car.vehicle_info?.v_name || 'Unknown Vehicle',
+                    supplier: car.supplier_info?.name || 'Unknown Supplier'
+                };
+            });
+
+            const uniqueCarDetails = [...new Set(carDetails.map(car => `${car.price}-${car.vehicle}-${car.supplier}`))]
+                .map(key => carDetails.find(car => `${car.price}-${car.vehicle}-${car.supplier}` === key))
+                .filter(car => car.price <= remainingBudget);
+
+            if (uniqueCarDetails.length > 0) {
+                const childCount = childrenAges ? childrenAges.split(',').length : 0;
+                const totalPeople = adults + childCount;
+                const carsNeeded = Math.ceil(totalPeople / 4);
+
+                const sortedCars = preference === 'cheap'
+                    ? uniqueCarDetails.sort((a, b) => a.price - b.price)
+                    : uniqueCarDetails.sort((a, b) => b.price - a.price);
+
+                const selectedCars = [];
+                let totalCarCost = 0;
+                for (let i = 0; i < carsNeeded && i < sortedCars.length; i++) {
+                    if (totalCarCost + sortedCars[i].price <= remainingBudget) {
+                        selectedCars.push(sortedCars[i]);
+                        totalCarCost += sortedCars[i].price;
+                    } else {
+                        break;
+                    }
+                }
+
+                if (selectedCars.length > 0) {
+                    itinerary.carRentals = selectedCars;
+                    remainingBudget -= totalCarCost;
+                } else {
+                    itinerary.carRentals = null;
+                    console.log(`[Budget] No affordable cars`);
+                }
+            } else {
+                itinerary.carRentals = null;
+                console.log(`[Budget] No affordable cars after filtering`);
+            }
+        } else {
+            itinerary.carRentals = null;
+            console.log(`[Budget] No car rental data to filter`);
+        }
+    } else {
+        itinerary.carRentals = null;
     }
 
     if (Array.isArray(itinerary.restaurants) && itinerary.restaurants.length > 0) {
@@ -333,130 +379,22 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
         } else if (dietaryPreference === 'non-vegetarian') {
             filteredRestaurants = filteredRestaurants.filter(r => !r.isVegetarian || r.isVegetarian === undefined);
         }
+
         const affordableRestaurants = filteredRestaurants
-            .filter(r => !r.price?.amount || r.price.amount <= budgetPerService)
+            .filter(r => !r.price?.amount || r.price.amount <= remainingBudget / 3)
             .sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0))
             .slice(0, 3);
-        itinerary.restaurants = affordableRestaurants;
+
+        if (affordableRestaurants.length > 0) {
+            const totalRestaurantCost = affordableRestaurants.reduce((sum, r) => sum + (r.price?.amount || 0), 0);
+            itinerary.restaurants = affordableRestaurants;
+            remainingBudget -= totalRestaurantCost;
+        } else {
+            itinerary.restaurants = [];
+            console.log(`[Budget] No affordable restaurants`);
+        }
     } else {
         itinerary.restaurants = [];
-    }
-
-    if (itinerary.carRentals && itinerary.carRentals.content && Array.isArray(itinerary.carRentals.content.search_results)) {
-        const carDetails = itinerary.carRentals.content.search_results.map(car => {
-            let price = car.pricing_info?.base_price || car.pricing_info?.total_price || 0;
-            let currency = car.pricing_info?.currency || car.pricing_info?.base_price_currency || 'INR';
-    
-            if (currency === 'INR' || price > 1000) {
-                const exchangeRate = 0.01673;
-                price = price * exchangeRate;
-                price = Math.round(price * 100) / 100;
-                currency = 'CAD';
-            }
-    
-            const vehicle = car.vehicle_info?.name || car.vehicle_info?.v_name || 'Unknown Vehicle';
-            const supplier = car.supplier_info?.name || 'Unknown Supplier';
-    
-            return {
-                price,
-                currency,
-                vehicle,
-                supplier
-            };
-        });
-    
-        const uniqueCarDetails = [];
-        const seen = new Set();
-        for (const car of carDetails) {
-            const key = `${car.price}-${car.vehicle}-${car.supplier}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                uniqueCarDetails.push(car);
-            }
-        }
-    
-        console.log('Unique Car Details:', uniqueCarDetails);
-    
-        uniqueCarDetails.sort((a, b) => a.price - b.price);
-    
-        // Calculate total people and cars needed
-        const childCount = childrenAges ? childrenAges.split(',').length : 0;
-        const totalPeople = adults + childCount;
-        const carsNeeded = Math.ceil(totalPeople / 4); // 1 car per 4 people
-        console.log(`Total People: ${totalPeople}, Cars Needed: ${carsNeeded}`);
-    
-        // Select the cheapest cars based on the number needed
-        const selectedCars = uniqueCarDetails.slice(0, carsNeeded);
-        console.log('Selected Cars:', selectedCars);
-        itinerary.carRentals = selectedCars.length > 0 ? selectedCars : null;
-    
-        // Adjust total price for budget comparison
-        if (selectedCars) {
-            const totalCarPrice = selectedCars.reduce((sum, car) => sum + car.price, 0);
-            console.log('Total Car Price:', totalCarPrice, 'Budget Per Service:', budgetPerService);
-            if (totalCarPrice > budgetPerService) {
-                itinerary.carRentals = null; // If total price exceeds budget, remove car rentals
-            }
-        }
-    } else if (itinerary.carRentals && Array.isArray(itinerary.carRentals.search_results)) {
-        const carDetails = itinerary.carRentals.search_results.map(car => {
-            let price = car.pricing_info?.base_price || car.pricing_info?.total_price || 0;
-            let currency = car.pricing_info?.currency || car.pricing_info?.base_price_currency || 'INR';
-    
-            if (currency === 'INR' || price > 1000) {
-                const exchangeRate = 0.01673;
-                price = price * exchangeRate;
-                price = Math.round(price * 100) / 100;
-                currency = 'CAD';
-            }
-    
-            const vehicle = car.vehicle_info?.name || car.vehicle_info?.v_name || 'Unknown Vehicle';
-            const supplier = car.supplier_info?.name || 'Unknown Supplier';
-    
-            return {
-                price,
-                currency,
-                vehicle,
-                supplier
-            };
-        });
-    
-        const uniqueCarDetails = [];
-        const seen = new Set();
-        for (const car of carDetails) {
-            const key = `${car.price}-${car.vehicle}-${car.supplier}`;
-            if (!seen.has(key)) {
-                seen.add(key);
-                uniqueCarDetails.push(car);
-            }
-        }
-    
-        console.log('Unique Car Details:', uniqueCarDetails);
-    
-        uniqueCarDetails.sort((a, b) => a.price - b.price);
-    
-        // Calculate total people and cars needed
-        const childCount = childrenAges ? childrenAges.split(',').length : 0;
-        const totalPeople = adults + childCount;
-        const carsNeeded = Math.ceil(totalPeople / 4); // 1 car per 4 people
-        console.log(`Total People: ${totalPeople}, Cars Needed: ${carsNeeded}`);
-    
-        // Select the cheapest cars based on the number needed
-        const selectedCars = uniqueCarDetails.slice(0, carsNeeded);
-        console.log('Selected Cars:', selectedCars);
-        itinerary.carRentals = selectedCars.length > 0 ? selectedCars : null;
-    
-        // Adjust total price for budget comparison
-        if (selectedCars) {
-            const totalCarPrice = selectedCars.reduce((sum, car) => sum + car.price, 0);
-            console.log('Total Car Price:', totalCarPrice, 'Budget Per Service:', budgetPerService);
-            if (totalCarPrice > budgetPerService) {
-                itinerary.carRentals = null; // If total price exceeds budget, remove car rentals
-            }
-        }
-    } else {
-        console.log('No valid car rental data structure found:', itinerary.carRentals);
-        itinerary.carRentals = null;
     }
 
     if (Array.isArray(itinerary.tourPlaces) && itinerary.tourPlaces.length > 0) {
@@ -471,5 +409,6 @@ const filterItineraryByBudget = (itinerary, budget, dietaryPreference, fromDate,
         itinerary.tourPlaces = [];
     }
 
+    itinerary.messages.push(`Remaining budget: $${remainingBudget.toFixed(2)}`);
     return itinerary;
 };

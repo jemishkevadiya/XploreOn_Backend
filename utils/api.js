@@ -526,7 +526,6 @@ const searchAttractions = async (locationId) => {
       );
 
       const attractions = response.data?.data?.products || [];
-      console.log('Attractions API Response:', JSON.stringify(attractions.slice(0, 2), null, 2)); 
 
       return attractions.map((attraction) => {
           const imageUrl = attraction.primaryPhoto?.url || 
