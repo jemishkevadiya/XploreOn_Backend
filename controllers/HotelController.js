@@ -1,4 +1,4 @@
-const { fetchDestinationCode, fetchHotelData, fetchRoomAvailability, fetchHotelDetails,fetchHotelPhotos, fetchHotelFacilities, fetchHotelFilters,fetchSortOptions } = require('../utils/api');
+const { fetchDestinationCode, fetchHotelData, fetchRoomAvailability, fetchHotelDetails,fetchHotelPhotos, fetchHotelFacilities, fetchHotelFilters,fetchSortOptions, fetchRoomListWithDetails } = require('../utils/api');
 
 const isValidDate = (date) => {
     const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
@@ -19,7 +19,9 @@ const normalizeLocation = (location) => {
 const retrieveDestinationCode = async (location) => {
     try {
         const normalizedLocation = normalizeLocation(location.trim());
+
         const response = await fetchDestinationCode(normalizedLocation);
+
         if (response && response.data && response.data.length > 0) {
             const primaryDestination = response.data[0];
             return {
@@ -115,28 +117,66 @@ const getHotelData = async (req, res) => {
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
-};
+};const getRoomAvailability = async (req, res) => {
+    const { 
+        hotelId, 
+        checkIn, 
+        checkOut, 
+        currency_code = "CAD", 
+    } = req.query;
 
-const getRoomAvailability = async (req, res) => {
-    const { hotelId, checkIn, checkOut } = req.query;
 
-    if (!hotelId) {
-        return res.status(400).json({ error: 'Hotel ID is required' }); 
+    if (!hotelId || typeof hotelId !== 'string' || hotelId.trim() === '') {
+        return res.status(400).json({ error: 'Valid hotel ID is required' });
     }
-    if (!checkIn || !checkOut) {
-        return res.status(400).json({ error: 'Check-in and check-out dates are required' }); 
+    if (!checkIn || !isValidDate(checkIn)) {
+        return res.status(400).json({ error: 'Valid check-in date (YYYY-MM-DD) is required' });
+    }
+    if (!checkOut || !isValidDate(checkOut)) {
+        return res.status(400).json({ error: 'Valid check-out date (YYYY-MM-DD) is required' });
+    }
+    if (!isFutureDate(checkIn)) {
+        return res.status(400).json({ error: 'Check-in date must be in the future' });
+    }
+    if (!isFutureDate(checkOut)) {
+        return res.status(400).json({ error: 'Check-out date must be in the future' });
+    }
+    if (new Date(checkOut) <= new Date(checkIn)) {
+        return res.status(400).json({ error: 'Check-out date must be after check-in date' });
     }
 
     try {
-        const data = await fetchRoomAvailability(hotelId, checkIn, checkOut);
-        return res.status(200).json(data);
+
+        const roomListData = await fetchRoomListWithDetails(
+            hotelId,
+            checkIn, 
+            checkOut, 
+            currency_code
+        );
+
+        if (!roomListData || roomListData.status !== true) {
+            return res.status(500).json({
+                status: false,
+                message: "Failed to fetch room list",
+            });
+        }
+
+
+        const responseData = {
+            status: true,
+            message: "Success",
+            data: {
+                rooms: roomListData.data || [],
+            },
+        };
+
+        return res.status(200).json(responseData);
     } catch (error) {
-        if (!res.headersSent) { 
+        if (!res.headersSent) {
             return res.status(500).json({ error: error.message });
         }
     }
 };
-
 
 const getHotelDetails = async (req, res) => {
     const { hotelId, arrivalDate, departureDate } = req.query;
@@ -286,10 +326,7 @@ const getSortOptions = async (req, res) => {
     }
 };
 
- 
-
 module.exports = {
-    retrieveDestinationCode,
     getDestinationCode,
     getHotelData,
     getRoomAvailability,
