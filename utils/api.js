@@ -84,9 +84,6 @@ const fetchFlightSearchResults = async (params) => {
         },
       }
     );
-
-    console.log('API Response:', response.data);
-
     return response.data;
   } catch (error) {
     console.error('Error in fetchFlightSearchResults:', error.message);
@@ -109,7 +106,6 @@ const fetchDestinationCode = async (location) => {
         },
       }
     );
-    console.log('Destination API Response:', JSON.stringify(response.data, null, 2));
     return response.data; 
   } catch (error) {
     console.error('Error fetching destination code:', error.response?.data || error.message);
@@ -141,7 +137,6 @@ const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQt
         },
       }
     );
-    console.log('Hotel API Response:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error('Error fetching hotel data:', error.response?.data || error.message);
@@ -280,7 +275,6 @@ const fetchHotelPhotos = async (hotelId) => {
         },
       }
     );
-
     return response.data;
   } catch (error) {
     console.error(" Error fetching hotel photos:", error.response?.data || error.message);
@@ -515,33 +509,41 @@ const searchTourLocation = async (locationName) => {
 
 const searchAttractions = async (locationId) => {
   try {
-    const response = await axios.get(
-      `https://${process.env.API_HOST}/api/v1/attraction/searchAttractions`,
-      {
-        params: {
-          id: locationId,  
-          sortBy: 'trending',  
-          page: 1,  
-          languagecode: 'en-us', 
-        },
-        headers: {
-          'x-rapidapi-key': process.env.API_KEY,
-          'x-rapidapi-host': process.env.API_HOST,
-        },
-      }
-    );
+      const response = await axios.get(
+          `https://${process.env.API_HOST}/api/v1/attraction/searchAttractions`,
+          {
+              params: {
+                  id: locationId,  
+                  sortBy: 'trending',  
+                  page: 1,  
+                  languagecode: 'en-us', 
+              },
+              headers: {
+                  'x-rapidapi-key': process.env.API_KEY,
+                  'x-rapidapi-host': process.env.API_HOST,
+              },
+          }
+      );
 
-    const attractions = response.data?.data?.products || [];
-    return attractions.map((attraction) => ({
-      name: attraction.name,
-      description: attraction.shortDescription,
-      price: attraction.representativePrice?.amount || 'N/A',
-      location: attraction.cityName,
-      imageUrl: attraction.primaryPhoto?.url || 'https://via.placeholder.com/200',
-    }));
+      const attractions = response.data?.data?.products || [];
+
+      return attractions.map((attraction) => {
+          const imageUrl = attraction.primaryPhoto?.url || 
+                          attraction.primaryPhoto?.imageUrl || 
+                          attraction.photo?.url || 
+                          attraction.images?.[0]?.url || 
+                          'https://via.placeholder.com/200';
+          return {
+              name: attraction.name,
+              description: attraction.shortDescription || 'No description available',
+              price: attraction.representativePrice?.amount || 'N/A',
+              location: attraction.cityName,
+              imageUrl: imageUrl,
+          };
+      });
   } catch (error) {
-    console.error('Error fetching tour places:', error.message);
-    throw error;
+      console.error('Error fetching tour places:', error.message);
+      throw error;
   }
 };
 
