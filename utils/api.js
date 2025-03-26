@@ -84,7 +84,9 @@ const fetchFlightSearchResults = async (params) => {
         },
       }
     );
+
     console.log('API Response:', response.data);
+
     return response.data;
   } catch (error) {
     console.error('Error in fetchFlightSearchResults:', error.message);
@@ -107,76 +109,11 @@ const fetchDestinationCode = async (location) => {
         },
       }
     );
-    console.log('Destination API Response:', JSON.stringify(response.data, null, 2));
     return response.data; 
   } catch (error) {
     console.error('Error fetching destination code:', error.response?.data || error.message);
     throw error; 
   }
-};
-const getHotelData = async (req, res) => {
-    const { location, checkIn, checkOut, person, roomQty, page_number, sortBy, sortOrder, amenities } = req.query;
-
-
-    if (!location || typeof location !== 'string' || location.trim() === '') {
-        return res.status(400).json({ error: 'Valid location is required' });
-    }
-    if (!checkIn || !isValidDate(checkIn)) {
-        return res.status(400).json({ error: 'Valid checkIn date (YYYY-MM-DD) is required' });
-    }
-    if (!checkOut || !isValidDate(checkOut)) {
-        return res.status(400).json({ error: 'Valid checkOut date (YYYY-MM-DD) is required' });
-    }
-    if (!isFutureDate(checkIn)) {
-        return res.status(400).json({ error: 'checkIn date must be in the future' });
-    }
-    if (!isFutureDate(checkOut)) {
-        return res.status(400).json({ error: 'checkOut date must be in the future' });
-    }
-    if (new Date(checkOut) <= new Date(checkIn)) {
-        return res.status(400).json({ error: 'checkOut date must be after checkIn date' });
-    }
-    if (!person || isNaN(person) || person <= 0) {
-        return res.status(400).json({ error: 'Valid person count greater than 0 is required' });
-    }
-    if (roomQty && (isNaN(roomQty) || roomQty <= 0)) {
-        return res.status(400).json({ error: 'Valid room quantity greater than 0 is required' });
-    }
-    if (page_number && (isNaN(page_number) || page_number < 1)) {
-        return res.status(400).json({ error: 'Valid page_number greater than 0 is required' });
-    }
-
-    try {
-        const trimmedLocation = location.trim();
-
-        const destinationData = await retrieveDestinationCode(trimmedLocation);
-        if (!destinationData || !destinationData.destinationCode) {
-            return res.status(404).json({ error: `No destination code found for location: ${trimmedLocation}` });
-        }
-
-        const destinationCode = destinationData.destinationCode;
-
-        let data = await fetchHotelData(
-            destinationCode,
-            checkIn,
-            checkOut,
-            parseInt(person, 10),
-            parseInt(roomQty, 10) || 1,
-            parseInt(page_number, 10) || 1
-        );
-
-        if (!Array.isArray(data)) {
-            if (data.data && Array.isArray(data.data.hotels)) {
-                data = data.data.hotels;
-            } else {
-                throw new Error('Expected hotel data array not found.');
-            }
-        }
-
-        res.status(200).json(data);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
 };
 const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQty = 1, page_number = 1) => {
   try {
@@ -194,7 +131,7 @@ const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQt
           departure_date: checkOut,
           adults: person,
           room_qty: roomQty,
-          page_number: page_number,
+          page_number: page_number || 1,
           units: 'metric',
           temperature_unit: 'c',
           languagecode: 'en-us',
@@ -202,7 +139,6 @@ const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQt
         },
       }
     );
-    console.log('Hotel API Response:', JSON.stringify(response.data, null, 2));
     return response.data;
   } catch (error) {
     console.error('Error fetching hotel data:', error.response?.data || error.message);
@@ -340,7 +276,6 @@ const fetchHotelPhotos = async (hotelId) => {
         },
       }
     );
-
     return response.data;
   } catch (error) {
     console.error(" Error fetching hotel photos:", error.response?.data || error.message);
@@ -575,33 +510,41 @@ const searchTourLocation = async (locationName) => {
 
 const searchAttractions = async (locationId) => {
   try {
-    const response = await axios.get(
-      `https://${process.env.API_HOST}/api/v1/attraction/searchAttractions`,
-      {
-        params: {
-          id: locationId,  
-          sortBy: 'trending',  
-          page: 1,  
-          languagecode: 'en-us', 
-        },
-        headers: {
-          'x-rapidapi-key': process.env.API_KEY,
-          'x-rapidapi-host': process.env.API_HOST,
-        },
-      }
-    );
+      const response = await axios.get(
+          `https://${process.env.API_HOST}/api/v1/attraction/searchAttractions`,
+          {
+              params: {
+                  id: locationId,  
+                  sortBy: 'trending',  
+                  page: 1,  
+                  languagecode: 'en-us', 
+              },
+              headers: {
+                  'x-rapidapi-key': process.env.API_KEY,
+                  'x-rapidapi-host': process.env.API_HOST,
+              },
+          }
+      );
 
-    const attractions = response.data?.data?.products || [];
-    return attractions.map((attraction) => ({
-      name: attraction.name,
-      description: attraction.shortDescription,
-      price: attraction.representativePrice?.amount || 'N/A',
-      location: attraction.cityName,
-      imageUrl: attraction.primaryPhoto?.url || 'https://via.placeholder.com/200',
-    }));
+      const attractions = response.data?.data?.products || [];
+
+      return attractions.map((attraction) => {
+          const imageUrl = attraction.primaryPhoto?.url || 
+                          attraction.primaryPhoto?.imageUrl || 
+                          attraction.photo?.url || 
+                          attraction.images?.[0]?.url || 
+                          'https://via.placeholder.com/200';
+          return {
+              name: attraction.name,
+              description: attraction.shortDescription || 'No description available',
+              price: attraction.representativePrice?.amount || 'N/A',
+              location: attraction.cityName,
+              imageUrl: imageUrl,
+          };
+      });
   } catch (error) {
-    console.error('Error fetching tour places:', error.message);
-    throw error;
+      console.error('Error fetching tour places:', error.message);
+      throw error;
   }
 };
 
