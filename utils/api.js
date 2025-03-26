@@ -84,6 +84,9 @@ const fetchFlightSearchResults = async (params) => {
         },
       }
     );
+
+    console.log('API Response:', response.data);
+
     return response.data;
   } catch (error) {
     console.error('Error in fetchFlightSearchResults:', error.message);
@@ -112,8 +115,7 @@ const fetchDestinationCode = async (location) => {
     throw error; 
   }
 };
-
-const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQty = 1) => {
+const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQty = 1, page_number = 1) => {
   try {
     const response = await axios.get(
       `https://${process.env.API_HOST}/api/v1/hotels/searchHotels`,
@@ -129,7 +131,7 @@ const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQt
           departure_date: checkOut,
           adults: person,
           room_qty: roomQty,
-          page_number: 1,
+          page_number: page_number || 1,
           units: 'metric',
           temperature_unit: 'c',
           languagecode: 'en-us',
@@ -143,7 +145,6 @@ const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQt
     return { hotels: [] };
   }
 };
-
 
 const fetchRoomAvailability = async (hotelId, checkIn, checkOut) => {
   try {
