@@ -20,13 +20,12 @@ const { handlePaymentWebhook } = require('./controllers/PaymentController');
 
 const app = express();
 
-//  Stripe Webhook Route (Handled Separately)
 app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePaymentWebhook);
 
-// const credentials = JSON.parse(fs.readFileSync('./credentials.json'));
-// admin.initializeApp({ credential: admin.credential.cert(credentials) });
+const credentials = JSON.parse(fs.readFileSync('./credentials.json'));
+admin.initializeApp({ credential: admin.credential.cert(credentials) });
 
-app.use(cors({ origin: "https://xploreonfrontend.vercel.app" }));
+app.use(cors({ origin: "http://localhost:3000" }));
 
 
 app.use((req, res, next) => {
@@ -69,7 +68,6 @@ app.use('/tour-places', tourRoutes);
 app.use('/itinerary', itineraryRoutes);
 app.use('/hotels', hotelRoutes);
 app.use('/payment', paymentRoutes);
-
 app.get('/', (req, res) => {
   res.status(200).json({ message: "XploreOn Backend is live!" });
 });
