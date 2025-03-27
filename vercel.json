@@ -1,57 +1,20 @@
 {
-    "version": 2,
-    "builds": [
+  "version": 2,
+  "builds": [
       {
-        "src": "server.js",
-        "use": "@vercel/node"
+          "src": "server.js",
+          "use": "@vercel/node",
+          "config": {
+              "includeFiles": [
+                  "dist/**"
+              ]
+          }
       }
-    ],
-    "routes": [
+  ],
+  "routes": [
       {
-        "src": "/user/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/airports/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/flights/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/car_rental/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/restaurants/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/tour-places/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/itinerary/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/hotels/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/payment/(.*)",
-        "dest": "server.js"
-      },
-      {
-        "src": "/payment/webhook",
-        "dest": "server.js",
-        "methods": ["POST"]
-      },
-      {
-        "src": "/",
-        "dest": "server.js"
+          "src": "/(.*)",
+          "dest": "server.js"
       }
-      
-    ]
-  }
+  ]
+}
