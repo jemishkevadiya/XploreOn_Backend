@@ -60,9 +60,8 @@ const getDestinationCode = async (req, res) => {
         }
     }
 };
-
 const getHotelData = async (req, res) => {
-    const { location, checkIn, checkOut, person, roomQty, page_number, sortBy, sortOrder, amenities } = req.query;
+    const { location, checkIn, checkOut, person, roomQty, page_number, sortBy, sortOrder, amenities, categories_filter } = req.query;
 
 
     if (!location || typeof location !== 'string' || location.trim() === '') {
@@ -103,13 +102,15 @@ const getHotelData = async (req, res) => {
 
         const destinationCode = destinationData.destinationCode;
 
+
         let data = await fetchHotelData(
             destinationCode,
             checkIn,
             checkOut,
             parseInt(person, 10),
             parseInt(roomQty, 10) || 1,
-            parseInt(page_number, 10) || 1 
+            parseInt(page_number, 10) || 1,
+            categories_filter || null 
         );
 
         if (!Array.isArray(data)) {
@@ -125,7 +126,6 @@ const getHotelData = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 const getRoomAvailability = async (req, res) => {
     const { 
         hotelId, 
