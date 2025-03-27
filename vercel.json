@@ -1,0 +1,52 @@
+{
+    "version": 2,
+    "builds": [
+      {
+        "src": "index.js",
+        "use": "@vercel/node"
+      }
+    ],
+    "routes": [
+      {
+        "src": "/user/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/airports/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/flights/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/car_rental/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/restaurants/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/tour-places/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/itinerary/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/hotels/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/payment/(.*)",
+        "dest": "server.js"
+      },
+      {
+        "src": "/payment/webhook",
+        "dest": "server.js",
+        "methods": ["POST"]
+      }
+    ]
+  }

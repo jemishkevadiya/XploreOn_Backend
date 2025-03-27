@@ -53,8 +53,8 @@ const createCheckoutSession = async (bookingId, totalAmount) => {
         },
       ],
       mode: "payment",
-      success_url: `http://localhost:3000/success`,
-      cancel_url: `http://localhost:3000/cancel`,
+      success_url: `${process.env.APP_API_URL}/success`|| `http://localhost:3000/success`,
+      cancel_url: `${process.env.APP_API_URL}/cancel`|| `http://localhost:3000/cancel`,
       metadata: { bookingId, serviceType },
       expires_at: expirationTime,
     });
