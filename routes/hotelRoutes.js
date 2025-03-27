@@ -10,5 +10,6 @@ router.get('/hotel-photos', hotelController.getHotelPhotos);
 router.get('/hotel-facilities', hotelController.getHotelFacilities);
 router.get('/filters', hotelController.getHotelFilters);
 router.get('/sort', hotelController.getSortOptions);
-
+router.post('/create-hotel-booking', hotelController.createHotelBooking);
 module.exports = router;
+

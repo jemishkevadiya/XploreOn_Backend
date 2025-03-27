@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
     uid: {
         type: String,
         required: true,
-        unique: true, // Ensures one user per Firebase UID
+        unique: true, 
     },
     firstname: {
         type: String,

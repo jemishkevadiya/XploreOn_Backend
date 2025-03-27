@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const bookingSchema = new mongoose.Schema({
     userId: { 
-        type: String,  // Store Firebase UID as a string
+        type: String,  
         required: true
     },
     serviceType: {
