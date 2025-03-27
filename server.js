@@ -21,19 +21,15 @@ const { handlePaymentWebhook } = require('./controllers/PaymentController');
 
 const app = express();
 
+
 app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePaymentWebhook);
 
-// const credentials = JSON.parse(
-//   fs.readFileSync('./credentials.json')
-// );
-
-// admin.initializeApp({
-//   credential: admin.credential.cert(credentials)
-// });
+const credentials = JSON.parse(fs.readFileSync('./credentials.json'));
+admin.initializeApp({ credential: admin.credential.cert(credentials) });
 
 app.use(cors({ origin: "http://localhost:3000" }));
 
-// Middleware for parsing JSON (excluding webhooks)
+
 app.use((req, res, next) => {
   if (req.originalUrl === '/payment/webhook') {
     next();
@@ -42,16 +38,23 @@ app.use((req, res, next) => {
   }
 });
 
-// app.use(async function(req, res, next) {
-//   const { authtoken } = req.headers;
 
-//   if (authtoken) {
-//     // console.log("Auth TOken", authtoken)
-//     const user = await admin.auth().verifyIdToken(authtoken);
-//     req.user = user;
-//   } else {
-//     res.sendStatus(400);
-//   }
+app.use(async function(req, res, next) {
+  const { authtoken } = req.headers;
+  console.log("Middleware - Method:", req.method, "Path:", req.path, "Authtoken:", authtoken ? "present" : "missing");
+  if (authtoken) {
+    try {
+      const user = await admin.auth().verifyIdToken(authtoken);
+      console.log("User verified:", user.uid);
+      req.user = user;
+    } catch (e) {
+      console.log("Token error:", e.message);
+      return res.status(401).json({ message: "Invalid token, bruuh!" });
+    }
+  }
+
+  next();
+});
 
 app.use(bodyParser.urlencoded({ extended: true }));
 connectDB();
