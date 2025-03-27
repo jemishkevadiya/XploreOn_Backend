@@ -15,7 +15,6 @@ const hotelRoutes = require('./routes/hotelRoutes');
 const restaurantRoutes = require('./routes/restaurantRoutes');
 const tourRoutes = require('./routes/tourRoutes');
 const itineraryRoutes = require('./routes/itineraryRoutes');
-const airportRoutes = require("./routes/airportRoutes");
 const paymentRoutes = require('./routes/paymentRoutes');
 const { handlePaymentWebhook } = require('./controllers/PaymentController');
 
@@ -63,7 +62,6 @@ app.use(bodyParser.urlencoded({ extended: true }));
 connectDB();
 
 app.use('/user', userRoutes);
-app.use("/airports", airportRoutes);
 app.use('/flights', flightRoutes);
 app.use('/car_rental', carRentalRoutes);
 app.use('/restaurants', restaurantRoutes);
