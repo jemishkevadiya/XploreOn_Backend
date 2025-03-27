@@ -84,6 +84,9 @@ const fetchFlightSearchResults = async (params) => {
         },
       }
     );
+
+    console.log('API Response:', response.data);
+
     return response.data;
   } catch (error) {
     console.error('Error in fetchFlightSearchResults:', error.message);
@@ -113,8 +116,30 @@ const fetchDestinationCode = async (location) => {
   }
 };
 
-const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQty = 1) => {
+const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQty = 1, page_number = 1, categories_filter = null) => {
   try {
+    const params = {
+      dest_id: destinationCode,
+      search_type: 'CITY',
+      arrival_date: checkIn,
+      departure_date: checkOut,
+      adults: person,
+      room_qty: roomQty,
+      page_number: page_number || 1,
+      units: 'metric',
+      temperature_unit: 'c',
+      languagecode: 'en-us',
+      currency_code: 'CAD',
+    };
+
+
+    if (categories_filter) {
+      params.categories_filter = categories_filter;
+      console.log("Applying categories_filter:", categories_filter);
+    } else {
+      console.log("No categories_filter applied (default: null)");
+    }
+
     const response = await axios.get(
       `https://${process.env.API_HOST}/api/v1/hotels/searchHotels`,
       {
@@ -122,21 +147,10 @@ const fetchHotelData = async (destinationCode, checkIn, checkOut, person, roomQt
           'x-rapidapi-key': process.env.API_KEY,
           'x-rapidapi-host': process.env.API_HOST,
         },
-        params: {
-          dest_id: destinationCode,
-          search_type: 'CITY',
-          arrival_date: checkIn,
-          departure_date: checkOut,
-          adults: person,
-          room_qty: roomQty,
-          page_number: 1,
-          units: 'metric',
-          temperature_unit: 'c',
-          languagecode: 'en-us',
-          currency_code: 'CAD',
-        },
+        params,
       }
     );
+
     return response.data;
   } catch (error) {
     console.error('Error fetching hotel data:', error.response?.data || error.message);
