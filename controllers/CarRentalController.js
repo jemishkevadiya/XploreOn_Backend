@@ -87,8 +87,8 @@ exports.createCarRentalBooking = async (req, res) => {
 
         const carRentalDetails = {
             carType: rentalDetails.carType,
-            rentalStartDate: rentalDetails.rentalStartDate,
-            rentalEndDate: rentalDetails.rentalEndDate,
+            pickUpDate: rentalDetails.pickUpDate,
+            dropOffDate: rentalDetails.dropOffDate,
             pickupLocation: rentalDetails.pickupLocation,
             dropOffLocation: rentalDetails.dropOffLocation,
             passengers: rentalDetails.passengers,

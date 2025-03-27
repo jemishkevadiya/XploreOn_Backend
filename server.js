@@ -49,16 +49,13 @@ app.use(async function(req, res, next) {
       req.user = user;
     } catch (e) {
       console.log("Token error:", e.message);
-      return res.status(401).json({ message: "Invalid token!" });
+      return res.status(401).json({ message: "Invalid token" });
     }
   }
-
+ 
   next();
-});
 
-app.use(bodyParser.urlencoded({ extended: true }));
-//   next();
-// });
+});
 
 app.use(express.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -80,3 +77,4 @@ const PORT = process.env.SERVER_PORT;
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
+
