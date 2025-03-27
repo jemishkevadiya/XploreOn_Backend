@@ -2,7 +2,7 @@
     "version": 2,
     "builds": [
       {
-        "src": "index.js",
+        "src": "server.js",
         "use": "@vercel/node"
       }
     ],
@@ -47,6 +47,11 @@
         "src": "/payment/webhook",
         "dest": "server.js",
         "methods": ["POST"]
+      },
+      {
+        "src": "/",
+        "dest": "server.js"
       }
+      
     ]
   }
