@@ -49,7 +49,7 @@ app.use(async function(req, res, next) {
       req.user = user;
     } catch (e) {
       console.log("Token error:", e.message);
-      return res.status(401).json({ message: "Invalid token, bruuh!" });
+      return res.status(401).json({ message: "Invalid token!" });
     }
   }
 
