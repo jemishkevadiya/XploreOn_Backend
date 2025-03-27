@@ -71,6 +71,10 @@ app.use('/tour-places', tourRoutes);
 app.use('/itinerary', itineraryRoutes);
 app.use('/hotels', hotelRoutes);
 app.use('/payment', paymentRoutes);
+// Add a root route to test deployment
+app.get('/', (req, res) => {
+  res.status(200).json({ message: "XploreOn Backend is live!" });
+});
 
 const PORT = process.env.SERVER_PORT;
 
