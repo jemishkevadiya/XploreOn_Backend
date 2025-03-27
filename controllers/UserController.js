@@ -6,8 +6,6 @@ const router = express.Router();
 
 exports.createUser = async (req, res) => {
     try {
-        console.log(" Received request data:", req.body); 
-
         const { uid, firstname, lastname, email, photoURL } = req.body;
 
         if (!uid || !firstname || !lastname || !email) {
@@ -58,8 +56,6 @@ exports.updateUser = async (req, res) => {
     const { firstname, lastname, newEmail, password } = req.body;
 
     try {
-        console.log(`Updating user with email: ${email}`);
-        console.log(`Request Body:`, req.body);
 
         const existingUser = await User.findOne({ email });
         if (!existingUser) {
