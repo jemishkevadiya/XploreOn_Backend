@@ -4,9 +4,8 @@ const { createCheckoutSession, handlePaymentWebhook, getPaymentDetails } = requi
 
 router.post('/checkout-session', createCheckoutSession);
 
-// ✅ Webhook Route with Timeout Handling
 router.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  req.setTimeout(10000); // Prevent timeout errors
+  req.setTimeout(10000);
 
   try {
     await handlePaymentWebhook(req, res);
