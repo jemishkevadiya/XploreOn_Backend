@@ -21,7 +21,7 @@ const { handlePaymentWebhook } = require('./controllers/PaymentController');
 
 const app = express();
 
-
+//  Stripe Webhook Route (Handled Separately)
 app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePaymentWebhook);
 
 const credentials = JSON.parse(fs.readFileSync('./credentials.json'));
@@ -57,6 +57,12 @@ app.use(async function(req, res, next) {
 });
 
 app.use(bodyParser.urlencoded({ extended: true }));
+//   next();
+// });
+
+app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
 connectDB();
 
 app.use('/user', userRoutes);
@@ -69,7 +75,8 @@ app.use('/itinerary', itineraryRoutes);
 app.use('/hotels', hotelRoutes);
 app.use('/payment', paymentRoutes);
 
-const PORT = process.env.SERVER_PORT || 1111;
+const PORT = process.env.SERVER_PORT;
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });

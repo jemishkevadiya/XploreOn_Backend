@@ -7,7 +7,7 @@ const bookingSchema = new mongoose.Schema({
     enum: ["flight", "car_rental", "hotel", "itinerary"],
     required: true,
   },
-  bookingDetails: { type: Object, required: true }, // Contains departureCity, destinationCity, departureDate
+  bookingDetails: { type: Object, required: true },
   totalAmount: { type: Number, required: true },
   paymentStatus: {
     type: String,
