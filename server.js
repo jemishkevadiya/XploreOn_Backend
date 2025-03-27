@@ -26,7 +26,7 @@ app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePa
 // const credentials = JSON.parse(fs.readFileSync('./credentials.json'));
 // admin.initializeApp({ credential: admin.credential.cert(credentials) });
 
-app.use(cors({ origin: process.env.APP_API_URL }));
+app.use(cors({ origin: "https://xploreonfrontend.vercel.app" }));
 
 
 app.use((req, res, next) => {
