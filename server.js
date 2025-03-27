@@ -27,7 +27,7 @@ app.post('/payment/webhook', express.raw({ type: 'application/json' }), handlePa
 const credentials = JSON.parse(fs.readFileSync('./credentials.json'));
 admin.initializeApp({ credential: admin.credential.cert(credentials) });
 
-app.use(cors({ origin: "http://localhost:3000" }));
+app.use(cors({ origin: process.env.APP_API_URL }));
 
 
 app.use((req, res, next) => {
